@@ -58,14 +58,19 @@ export class CliManager {
     }
 
     async initializeCli(argv: string[]): Promise<void> {
-        const contributions = Array.from(this.contributionsProvider.getContributions());
-        await Promise.all(contributions.map(
-            contrib => contrib.configure(this.parser),
-        ));
+        const promises = [];
+        for (const contrib of this.contributionsProvider.getContributions()) {
+            promises.push(contrib.configure(this.parser));
+        }
+        await Promise.all(promises);
+
         const args = await this.parse(argv);
-        await Promise.all(contributions.map(
-            contrib => contrib.setArguments(args),
-        ));
+
+        promises.length = 0;
+        for (const contrib of this.contributionsProvider.getContributions()) {
+            promises.push(contrib.setArguments(args));
+        }
+        await Promise.all(promises);
     }
 
     protected isExit(): boolean {

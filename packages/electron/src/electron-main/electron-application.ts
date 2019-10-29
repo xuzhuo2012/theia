@@ -26,9 +26,6 @@ import { inject, injectable, named } from 'inversify';
 import { AddressInfo } from 'net';
 import * as path from 'path';
 import { Argv } from 'yargs';
-import { FileUri } from '@theia/core/lib/node';
-import { SyncPromise } from '@theia/core/lib/common/promise-util';
-import { FrontendApplicationConfigProvider } from '@theia/core/lib/browser/frontend-application-config-provider';
 const Storage = require('electron-store');
 const createYargs: (argv?: string[], cwd?: string) => Argv = require('yargs/yargs');
 
@@ -44,50 +41,52 @@ export interface MainCommandOptions {
 
 }
 
-/**
- * Fields related to a launch event.
- *
- * This kind of event is triggered in two different contexts:
- *  1. The app is launched for the first time, `secondInstance` is false.
- *  2. The app is already running but user relaunches it, `secondInstance` is true.
- */
 export interface ExecutionParams {
     secondInstance: boolean
     argv: string[]
     cwd: string
 }
 
-export const ElectronApplicationGlobals = Symbol('ElectronApplicationSettings');
-export interface ElectronApplicationGlobals {
+export const ElectronApplicationSettings = Symbol('ElectronApplicationSettings');
+export interface ElectronApplicationSettings {
     THEIA_APPLICATION_NAME: string
     THEIA_APP_PROJECT_PATH: string
     THEIA_BACKEND_MAIN_PATH: string
     THEIA_FRONTEND_HTML_PATH: string
 }
 
-export const ElectronMainContribution = Symbol('ElectronApplicationContribution');
-export interface ElectronMainContribution {
+export const ElectronApplicationContribution = Symbol('ElectronApplicationContribution');
+export interface ElectronApplicationContribution {
     /**
      * The application is ready and is starting. This is the time to initialize
      * services global to this process.
      *
      * This event is fired when the process starts for the first time.
      */
-    onStart?(application?: ElectronApplication): MaybePromise<void>;
+    start?(): MaybePromise<void>;
+    /**
+     * Entry point either after the `start` or `second-instance` events.
+     *
+     * Hook to this event in order to access resolved command line arguments.
+     *
+     * If your application is a single-instance application, this hook could be
+     * called multiple times.
+     */
+    launch?(params: ExecutionParams): MaybePromise<void>;
     /**
      * The application is stopping.
      */
-    onStop?(application?: ElectronApplication): MaybePromise<void>;
+    stop?(): MaybePromise<void>;
 }
 
 @injectable()
 export class ElectronApplication {
 
-    @inject(ContributionProvider) @named(ElectronMainContribution)
-    protected readonly electronApplicationContributions: ContributionProvider<ElectronMainContribution>;
+    @inject(ContributionProvider) @named(ElectronApplicationContribution)
+    protected readonly electronApplicationContributions: ContributionProvider<ElectronApplicationContribution>;
 
-    @inject(ElectronApplicationGlobals)
-    protected readonly globals: ElectronApplicationGlobals;
+    @inject(ElectronApplicationSettings)
+    protected readonly settings: ElectronApplicationSettings;
 
     @inject(ElectronSecurityToken)
     protected electronSecurityToken: ElectronSecurityToken;
@@ -95,13 +94,7 @@ export class ElectronApplication {
     protected readonly electronStore = new Storage();
 
     /**
-     * When the application is stopping, this field will contain the task encapsulating the stopping process.
-     * This field is undefined otherwise.
-     */
-    protected stoppingTask: SyncPromise<void> | undefined;
-
-    /**
-     * Note: There is no backend process while in `devMode`.
+     * There is no backend process in `devMode`.
      */
     protected backendProcess: ChildProcess | undefined;
 
@@ -116,15 +109,19 @@ export class ElectronApplication {
 
     async start(): Promise<void> {
         this.hookApplicationEvents();
-        this._backendPort = await this.startBackend();
-        await app.whenReady();
+        await this.startBackend().then(port => this._backendPort = port);
+        if (!app.isReady()) {
+            await app.whenReady();
+        }
         await this.attachElectronSecurityToken(this.backendPort);
         await this.startContributions();
-        await this.launch({
+        const executionParams: ExecutionParams = {
             secondInstance: false,
             argv: process.argv,
             cwd: process.cwd(),
-        });
+        };
+        await this.launch(executionParams);
+        await this.launchContributions(executionParams);
     }
 
     async launch(params: ExecutionParams): Promise<void> {
@@ -137,46 +134,47 @@ export class ElectronApplication {
     }
 
     /**
-     * Use this rather than creating `BrowserWindow` instances from scratch, since some security parameters need to be set, this method will do it.
+     * Use this rather than creating `BrowserWindow` instances from scratch,
+     * since some security parameters need to be set, this method will do it.
      *
      * @param options
      */
     async createWindow(options: BrowserWindowConstructorOptions): Promise<BrowserWindow> {
-        if (this.isStopping()) {
-            throw new Error('cannot create new windows when the app is stopping.');
-        }
         const electronWindow = new BrowserWindow(options);
-        this.attachWebContentsNewWindow(electronWindow);
-        this.attachReadyToShow(electronWindow);
+        // Prevent openning arbitrary links in BrowserWindow instances.
+        // A link is to be displayed in the user's default browser.
+        electronWindow.webContents.on('new-window', (event, url) => {
+            event.preventDefault();
+            shell.openExternal(url);
+        });
+
+        electronWindow.on('ready-to-show', () => electronWindow.show());
         this.attachSaveWindowState(electronWindow);
         this.attachWillPreventUnload(electronWindow);
-        this.attachGlobalShortcuts(electronWindow);
+
         return electronWindow;
     }
 
     async openDefaultWindow(): Promise<BrowserWindow> {
         const uri = await this.createWindowUri();
-        const electronWindow = await this.createWindow(this.getBrowserWindowOptions());
-        electronWindow.loadURL(uri.toString(true));
-        return electronWindow;
+        const window = await this.createWindow(this.getBrowserWindowOptions());
+        window.loadURL(uri.toString(true));
+        return window;
     }
 
     async openWindowWithWorkspace(workspace: string): Promise<BrowserWindow> {
         const uri = (await this.createWindowUri()).withFragment(workspace);
-        const electronWindow = await this.createWindow(this.getBrowserWindowOptions());
-        electronWindow.loadURL(uri.toString(true));
-        return electronWindow;
+        const window = await this.createWindow(this.getBrowserWindowOptions());
+        window.loadURL(uri.toString(true));
+        return window;
     }
 
     /**
-     * "Gently" close all windows, application will not stop if a `beforeunload` handler returns `false`.
+     * "Gently" close all windows, application will not stop if a `beforeunload`
+     * handler returns `false`.
      */
     requestStop(): void {
         app.quit();
-    }
-
-    isStopping(): boolean {
-        return typeof this.stoppingTask !== 'undefined';
     }
 
     protected async handleMainCommand(params: ExecutionParams, options: MainCommandOptions): Promise<void> {
@@ -188,7 +186,9 @@ export class ElectronApplication {
     }
 
     protected async createWindowUri(): Promise<URI> {
-        return FileUri.create(this.globals.THEIA_FRONTEND_HTML_PATH)
+        return new URI()
+            .withScheme('file')
+            .withPath(this.settings.THEIA_FRONTEND_HTML_PATH)
             .withQuery(`port=${this.backendPort}`);
     }
 
@@ -200,7 +200,7 @@ export class ElectronApplication {
         return {
             ...windowState,
             show: false,
-            title: this.globals.THEIA_APPLICATION_NAME,
+            title: this.settings.THEIA_APPLICATION_NAME,
             minWidth: 200,
             minHeight: 120,
         };
@@ -210,37 +210,21 @@ export class ElectronApplication {
         // The `screen` API must be required when the application is ready.
         // See: https://electronjs.org/docs/api/screen#screen
         const { screen } = require('electron');
+
         // We must center by hand because \`browserWindow.center()\` fails on multi-screen setups
         // See: https://github.com/electron/electron/issues/3490
         const { bounds } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
         const height = Math.floor(bounds.height * (2 / 3));
         const width = Math.floor(bounds.width * (2 / 3));
+
         const y = Math.floor(bounds.y + (bounds.height - height) / 2);
         const x = Math.floor(bounds.x + (bounds.width - width) / 2);
+
         return { width, height, x, y };
     }
 
-    /**
-     * Prevent opening links into new electron browser windows by default.
-     */
-    protected attachWebContentsNewWindow(electronWindow: BrowserWindow): void {
-        electronWindow.webContents.on('new-window', (event, url) => {
-            event.preventDefault();
-            shell.openExternal(url);
-        });
-    }
-
-    /**
-     * Only show the window when the content is ready.
-     */
-    protected attachReadyToShow(electronWindow: BrowserWindow): void {
-        electronWindow.on('ready-to-show', () => electronWindow.show());
-    }
-
-    /**
-     * Save the window geometry state on every change.
-     */
     protected attachSaveWindowState(electronWindow: BrowserWindow): void {
+        // Save the window geometry state on every change
         const saveWindowState = () => {
             try {
                 let bounds;
@@ -260,7 +244,8 @@ export class ElectronApplication {
                 console.error('Error while saving window state:', e);
             }
         };
-        let delayedSaveTimeout: NodeJS.Timer | undefined;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let delayedSaveTimeout: any;
         const saveWindowStateDelayed = () => {
             if (delayedSaveTimeout) {
                 clearTimeout(delayedSaveTimeout);
@@ -272,9 +257,6 @@ export class ElectronApplication {
         electronWindow.on('move', saveWindowStateDelayed);
     }
 
-    /**
-     * Catch window closing event and display a confirmation window.
-     */
     protected attachWillPreventUnload(electronWindow: BrowserWindow): void {
         // Fired when a beforeunload handler tries to prevent the page unloading
         electronWindow.webContents.on('will-prevent-unload', event => {
@@ -294,62 +276,37 @@ export class ElectronApplication {
     }
 
     /**
-     * Catch certain keybindings to prevent reloading the window using keyboard shortcuts.
-     */
-    protected attachGlobalShortcuts(electronWindow: BrowserWindow): void {
-        if (FrontendApplicationConfigProvider.get().electron?.disallowReloadKeybinding) {
-            const accelerators = ['CmdOrCtrl+R', 'F5'];
-            electronWindow.on('focus', () => {
-                for (const accelerator of accelerators) {
-                    electron.globalShortcut.register(accelerator, () => { });
-                }
-            });
-            electronWindow.on('blur', () => {
-                for (const accelerator of accelerators) {
-                    electron.globalShortcut.unregister(accelerator);
-                }
-            });
-        }
-    }
-
-    /**
      * Start the NodeJS backend server.
      *
      * @return Running server's port promise.
      */
     protected async startBackend(): Promise<number> {
-        // Check if we should run everything as one process.
-        const noBackendFork = process.argv.indexOf('--no-cluster') !== -1;
-        // Any flag/argument passed after `--` will be forwarded to the backend process.
-        const backendArgvMarkerIndex = process.argv.indexOf('--');
-        const backendArgv = backendArgvMarkerIndex === -1 ? [] : process.argv.slice(backendArgvMarkerIndex + 1);
-        // We cannot use the `process.cwd()` as the application project path (the location of the `package.json` in other words)
+        const devMode = process.defaultApp || /node_modules[\/]electron[\/]/.test(process.execPath);
+
+        // We cannot use the \`process.cwd()\` as the application project path (the location of the \`package.json\` in other words)
         // in a bundled electron application because it depends on the way we start it. For instance, on OS X, these are a differences:
         // https://github.com/eclipse-theia/theia/issues/3297#issuecomment-439172274
-        process.env.THEIA_APP_PROJECT_PATH = this.globals.THEIA_APP_PROJECT_PATH;
+        process.env.THEIA_APP_PROJECT_PATH = this.settings.THEIA_APP_PROJECT_PATH;
+
         // Set the electron version for both the dev and the production mode. (https://github.com/eclipse-theia/theia/issues/3254)
         // Otherwise, the forked backend processes will not know that they're serving the electron frontend.
         process.env.THEIA_ELECTRON_VERSION = process.versions.electron;
-        if (noBackendFork) {
-            process.env[ElectronSecurityToken] = JSON.stringify(this.electronSecurityToken);
-            // The backend server main file is supposed to export a promise resolving with the port used by the http(s) server.
-            const address: AddressInfo = await require(this.globals.THEIA_BACKEND_MAIN_PATH);
-            return address.port;
-        } else {
-            const backendProcess = this.backendProcess = fork(this.globals.THEIA_BACKEND_MAIN_PATH, backendArgv, await this.getForkOptions());
-            return new Promise((resolve, reject) => {
-                const timeout = setTimeout(console.warn, 5000, 'backend is taking a long time to start, something could be wrong?');
-                // The backend server main file is also supposed to send the resolved http(s) server port via IPC.
-                backendProcess.on('message', (address: AddressInfo) => {
-                    clearTimeout(timeout);
-                    resolve(address.port);
-                });
-                backendProcess.on('error', error => {
-                    clearTimeout(timeout);
-                    reject(error);
-                });
-            });
-        }
+
+        return new Promise<number>(async (resolve, reject) => {
+            if (devMode) {
+                process.env[ElectronSecurityToken] = JSON.stringify(this.electronSecurityToken);
+                // The backend server main file is supposed to export a promise
+                // resolving with the port used by the http(s) server.
+                require(this.settings.THEIA_BACKEND_MAIN_PATH).then((address: AddressInfo) => resolve(address.port), reject);
+            } else {
+                // The backend server main file is supposed to also send via IPC
+                // the resolved http(s) server port.
+                this.backendProcess = fork(this.settings.THEIA_BACKEND_MAIN_PATH, [], await this.getForkOptions());
+                // Port number sent over IPC:
+                this.backendProcess.on('message', (address: AddressInfo) => resolve(address.port));
+                this.backendProcess.on('error', reject);
+            }
+        });
     }
 
     protected async getForkOptions(): Promise<ForkOptions> {
@@ -368,7 +325,6 @@ export class ElectronApplication {
                 url: `http://localhost:${port}`,
                 name: ElectronSecurityToken,
                 value: JSON.stringify(this.electronSecurityToken),
-                httpOnly: true,
             }, error => error ? reject(error) : resolve());
         });
     }
@@ -378,30 +334,31 @@ export class ElectronApplication {
         app.on('second-instance', this.onSecondInstance.bind(this));
     }
 
-    protected onWillQuit(event: ElectronEvent): void {
-        if (typeof this.stoppingTask === 'undefined') {
-            event.preventDefault();
-            this.stoppingTask = new SyncPromise(this.stop());
-            // Once the stopping process is done, we should quit for real:
-            this.stoppingTask.promise.then(
-                () => app.quit(),
-                () => app.quit(),
-            );
-        } else if (!this.stoppingTask.finished) {
-            event.preventDefault();
-        }
-        // `stoppingTask.finished === true`: let the process quit.
+    protected async onWillQuit(event: ElectronEvent): Promise<void> {
+        await this.stop();
     }
 
     protected async onSecondInstance(event: ElectronEvent, argv: string[], cwd: string): Promise<void> {
-        await this.launch({ argv, cwd, secondInstance: true });
+        const executionParams: ExecutionParams = { argv, cwd, secondInstance: true };
+        await this.launch(executionParams);
+        await this.launchContributions(executionParams);
     }
 
     protected async startContributions(): Promise<void> {
         const promises = [];
         for (const contribution of this.electronApplicationContributions.getContributions()) {
-            if (contribution.onStart) {
-                promises.push(contribution.onStart(this));
+            if (contribution.start) {
+                promises.push(contribution.start());
+            }
+        }
+        await Promise.all(promises);
+    }
+
+    protected async launchContributions(params: ExecutionParams): Promise<void> {
+        const promises = [];
+        for (const contribution of this.electronApplicationContributions.getContributions()) {
+            if (contribution.launch) {
+                promises.push(contribution.launch(params));
             }
         }
         await Promise.all(promises);
@@ -410,20 +367,22 @@ export class ElectronApplication {
     protected async stopContributions(): Promise<void> {
         const promises = [];
         for (const contribution of this.electronApplicationContributions.getContributions()) {
-            if (contribution.onStop) {
-                promises.push(contribution.onStop(this));
+            if (contribution.stop) {
+                promises.push(contribution.stop());
             }
         }
         await Promise.all(promises);
     }
 
     protected async stop(): Promise<void> {
+        let code = 0;
         try {
             await this.stopContributions();
         } catch (error) {
             console.error(error);
-            process.exitCode = error && error.code || 1;
+            code = error && error.code || 1;
         }
+        app.exit(code);
     }
 
 }

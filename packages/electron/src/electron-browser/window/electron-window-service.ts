@@ -19,7 +19,7 @@ import { injectable, inject } from 'inversify';
 import { NewWindowOptions } from '@theia/core/lib/browser/window/window-service';
 import { DefaultWindowService } from '@theia/core/lib/browser/window/default-window-service';
 
-import { ElectronMainWindowService } from '../../electron-common/electron-window-protocol';
+import { ElectronMainWindowService } from '../../common/electron-window-protocol';
 
 @injectable()
 export class ElectronWindowService extends DefaultWindowService {

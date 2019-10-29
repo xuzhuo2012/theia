@@ -14,27 +14,7 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { webContents } from 'electron';
-import { injectable } from 'inversify';
-import { ElectronApplicationContribution } from './electron-application';
-const nativeKeymap = require('native-keymap');
-
-@injectable()
-export class ElectronNativeKeymap implements ElectronApplicationContribution {
-
-    /**
-     * Notify all renderer processes on keyboard layout change.
-     */
-    start(): void {
-        nativeKeymap.onDidChangeKeyboardLayout(() => {
-            const newLayout = {
-                info: nativeKeymap.getCurrentKeyboardLayout(),
-                mapping: nativeKeymap.getKeyMap()
-            };
-            for (const webContent of webContents.getAllWebContents()) {
-                webContent.send('keyboardLayoutChanged', newLayout);
-            }
-        });
-    }
-
-}
+/**
+ * Name of the channel used with `ipcMain.on/emit`.
+ */
+export const ELECTRON_IPC_CHANNEL_NAME = 'theia-json-rpc';

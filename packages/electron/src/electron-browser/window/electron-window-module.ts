@@ -17,15 +17,17 @@
 import { ContainerModule } from 'inversify';
 
 import { WindowService } from '@theia/core/lib/browser/window/window-service';
+// import { FrontendApplicationContribution } from '@theia/core/lib/browser/frontend-application';
 import { ClipboardService } from '@theia/core/lib/browser/clipboard-service';
 
-import { ElectronMainWindowService, electronMainWindowServicePath } from '../../electron-common/electron-window-protocol';
+import { ElectronMainWindowService, electronMainWindowServicePath } from '../../common/electron-window-protocol';
 import { ElectronIpcConnectionProvider } from '../messaging/electron-ipc-connection-provider';
 import { ElectronClipboardService } from '../electron-clipboard-service';
 import { ElectronWindowService } from './electron-window-service';
 
 export default new ContainerModule((bind, unbind, isBound, rebind) => {
     bind(ElectronMainWindowService).toDynamicValue(context => ElectronIpcConnectionProvider.createProxy(context.container, electronMainWindowServicePath));
+    // bind(FrontendApplicationContribution).toService(WindowService);
     rebind(ClipboardService).to(ElectronClipboardService).inSingletonScope();
     rebind(WindowService).to(ElectronWindowService).inSingletonScope();
 });

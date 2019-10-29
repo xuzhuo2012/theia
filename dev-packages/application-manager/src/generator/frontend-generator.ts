@@ -135,16 +135,14 @@ if (process.env.LC_ALL) {
 process.env.LC_NUMERIC = 'C';
 
 const { default: electronApplicationModule } = require('@theia/electron/lib/electron-main/electron-application-module');
-const { ElectronApplication, ElectronApplicationGlobals } = require('@theia/electron/lib/electron-main/electron-application');
-const { FrontendApplicationConfigProvider } = require('@theia/core/lib/browser/frontend-application-config-provider');
+const { ElectronApplication, ElectronApplicationSettings } = require('@theia/electron/lib/electron-main/electron-application');
 const { Container } = require('inversify');
 const { resolve } = require('path');
 const { app } = require('electron');
 
-FrontendApplicationConfigProvider.set(${this.prettyStringify(this.pck.props.frontend.config)});
-
 const applicationName = \`${this.pck.props.frontend.config.applicationName}\`;
 const isSingleInstance = ${this.pck.props.backend.config.singleInstance === true ? 'true' : 'false'};
+const disallowReloadKeybinding = ${this.pck.props.frontend.config.electron?.disallowReloadKeybinding === true ? 'true' : 'false'};
 
 if (isSingleInstance && !app.requestSingleInstanceLock()) {
     // There is another instance running, exit now. The other instance will request focus.
@@ -154,7 +152,7 @@ if (isSingleInstance && !app.requestSingleInstanceLock()) {
 
 const container = new Container();
 container.load(electronApplicationModule);
-container.bind(ElectronApplicationGlobals).toConstantValue({
+container.bind(ElectronApplicationSettings).toConstantValue({
     THEIA_APPLICATION_NAME: applicationName,
     THEIA_APP_PROJECT_PATH: resolve(__dirname, '..', '..'),
     THEIA_BACKEND_MAIN_PATH: resolve(__dirname, '..', 'backend', 'main.js'),
@@ -174,11 +172,11 @@ async function start() {
 
 module.exports = Promise.resolve()${this.compileElectronMainModuleImports(electronMainModules)}
     .then(start).catch(reason => {
-        console.error('Failed to start the electron application.');
-        if (reason) {
-            console.error(reason);
-        }
-    }); `;
+            console.error('Failed to start the electron application.');
+            if (reason) {
+                console.error(reason);
+            }
+        }); `;
     }
 
 }

@@ -15,34 +15,30 @@
  ********************************************************************************/
 
 import { bindContributionProvider } from '@theia/core/lib/common/contribution-provider';
+import { ConnectionHandler } from '@theia/core/lib/common/messaging/handler';
 import { JsonRpcConnectionHandler } from '@theia/core/lib/common/messaging/proxy-factory';
 import { ElectronSecurityToken } from '@theia/core/lib/electron-common/electron-token';
 import { ContainerModule } from 'inversify';
 import { v4 } from 'uuid';
-import { ElectronMainWindowService, electronMainWindowServicePath } from '../electron-common/electron-window-protocol';
-import { ElectronApplication, ElectronMainContribution } from './electron-application';
+import { ElectronMainWindowService, electronMainWindowServicePath } from '../common/electron-window-protocol';
+import { ElectronApplication, ElectronApplicationContribution } from './electron-application';
 import { DefaultElectronMainWindowService } from './electron-window-service';
 import { ElectronMessagingContribution } from './messaging/electron-messaging-contribution';
 import { ElectronMessagingService } from './messaging/electron-messaging-service';
-import { ElectronConnectionHandler } from '../electron-common/messaging/electron-connection-handler';
-
-const electronSecurityToken: ElectronSecurityToken = { value: v4() };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(global as any)[ElectronSecurityToken] = electronSecurityToken;
 
 export default new ContainerModule(bind => {
     bind(ElectronApplication).toSelf().inSingletonScope();
     bind(ElectronMessagingContribution).toSelf().inSingletonScope();
-    bind<ElectronSecurityToken>(ElectronSecurityToken).toConstantValue(electronSecurityToken);
+    bind<ElectronSecurityToken>(ElectronSecurityToken).toConstantValue({ value: v4() });
 
-    bindContributionProvider(bind, ElectronConnectionHandler);
+    bindContributionProvider(bind, ConnectionHandler);
     bindContributionProvider(bind, ElectronMessagingService.Contribution);
-    bindContributionProvider(bind, ElectronMainContribution);
+    bindContributionProvider(bind, ElectronApplicationContribution);
 
-    bind(ElectronMainContribution).toService(ElectronMessagingContribution);
+    bind(ElectronApplicationContribution).toService(ElectronMessagingContribution);
 
     bind(ElectronMainWindowService).to(DefaultElectronMainWindowService).inSingletonScope();
-    bind(ElectronConnectionHandler).toDynamicValue(context =>
+    bind(ConnectionHandler).toDynamicValue(context =>
         new JsonRpcConnectionHandler(electronMainWindowServicePath,
             () => context.container.get(ElectronMainWindowService))
     ).inSingletonScope();

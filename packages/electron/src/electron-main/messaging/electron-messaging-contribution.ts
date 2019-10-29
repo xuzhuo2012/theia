@@ -20,14 +20,14 @@ import { MessageConnection } from 'vscode-jsonrpc';
 import { createWebSocketConnection } from 'vscode-ws-jsonrpc/lib/socket/connection';
 
 import { ContributionProvider } from '@theia/core/lib/common/contribution-provider';
+import { ConnectionHandler } from '@theia/core/lib/common/messaging/handler';
 import { WebSocketChannel } from '@theia/core/lib/common/messaging/web-socket-channel';
 import { MessagingContribution } from '@theia/core/lib/node/messaging/messaging-contribution';
 import { ConsoleLogger } from '@theia/core/lib/node/messaging/logger';
 
-import { THEIA_ELECTRON_IPC_CHANNEL_NAME } from '../../electron-common/messaging/electron-ipc-protocol';
-import { ElectronMainContribution } from '../electron-application';
+import { ELECTRON_IPC_CHANNEL_NAME } from '../../common/messaging/ipc-protocol';
+import { ElectronApplicationContribution } from '../electron-application';
 import { ElectronMessagingService } from './electron-messaging-service';
-import { ElectronConnectionHandler } from '../../electron-common/messaging/electron-connection-handler';
 
 /**
  * This component replicates the role filled by `MessagingContribution` but for Electron.
@@ -38,13 +38,13 @@ import { ElectronConnectionHandler } from '../../electron-common/messaging/elect
  * This component allows communication between renderer process (frontend) and electron main process.
  */
 @injectable()
-export class ElectronMessagingContribution implements ElectronMainContribution, ElectronMessagingService {
+export class ElectronMessagingContribution implements ElectronApplicationContribution, ElectronMessagingService {
 
     @inject(ContributionProvider) @named(ElectronMessagingService.Contribution)
     protected readonly messagingContributions: ContributionProvider<ElectronMessagingService.Contribution>;
 
-    @inject(ContributionProvider) @named(ElectronConnectionHandler)
-    protected readonly connectionHandlers: ContributionProvider<ElectronConnectionHandler>;
+    @inject(ContributionProvider) @named(ConnectionHandler)
+    protected readonly connectionHandlers: ContributionProvider<ConnectionHandler>;
 
     protected readonly channelHandlers = new MessagingContribution.ConnectionHandlers<WebSocketChannel>();
     protected readonly windowChannels = new Map<number, Map<number, WebSocketChannel>>();
@@ -52,12 +52,12 @@ export class ElectronMessagingContribution implements ElectronMainContribution, 
     @postConstruct()
     protected init(): void {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ipcMain.on(THEIA_ELECTRON_IPC_CHANNEL_NAME, (event: ElectronEvent, data: string) => {
+        ipcMain.on(ELECTRON_IPC_CHANNEL_NAME, (event: ElectronEvent, data: string) => {
             this.handleIpcMessage(event, data);
         });
     }
 
-    onStart(): void {
+    start(): void {
         for (const contribution of this.messagingContributions.getContributions()) {
             contribution.configure(this);
         }
@@ -126,7 +126,7 @@ export class ElectronMessagingContribution implements ElectronMainContribution, 
     protected createChannel(id: number, sender: WebContents): WebSocketChannel {
         return new WebSocketChannel(id, content => {
             if (!sender.isDestroyed()) {
-                sender.send(THEIA_ELECTRON_IPC_CHANNEL_NAME, content);
+                sender.send(ELECTRON_IPC_CHANNEL_NAME, content);
             }
         });
     }

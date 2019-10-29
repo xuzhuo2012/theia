@@ -14,27 +14,15 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { webContents } from 'electron';
-import { injectable } from 'inversify';
-import { ElectronApplicationContribution } from './electron-application';
-const nativeKeymap = require('native-keymap');
+import { MaybePromise } from '@theia/core';
 
-@injectable()
-export class ElectronNativeKeymap implements ElectronApplicationContribution {
+export const electronMainWindowServicePath = '/electron/window';
 
-    /**
-     * Notify all renderer processes on keyboard layout change.
-     */
-    start(): void {
-        nativeKeymap.onDidChangeKeyboardLayout(() => {
-            const newLayout = {
-                info: nativeKeymap.getCurrentKeyboardLayout(),
-                mapping: nativeKeymap.getKeyMap()
-            };
-            for (const webContent of webContents.getAllWebContents()) {
-                webContent.send('keyboardLayoutChanged', newLayout);
-            }
-        });
-    }
+export const ElectronMainWindowService = Symbol('ElectronMainWindowService');
+export interface ElectronMainWindowService {
+
+    openElectronWindow(url: string): MaybePromise<void>
+
+    openExternalWindow(url: string): MaybePromise<void>
 
 }

@@ -16,7 +16,7 @@
 
 import { shell } from 'electron';
 import { injectable, inject } from 'inversify';
-import { ElectronMainWindowService } from '../electron-common/electron-window-protocol';
+import { ElectronMainWindowService } from '../common/electron-window-protocol';
 import { ElectronApplication } from './electron-application';
 
 @injectable()
