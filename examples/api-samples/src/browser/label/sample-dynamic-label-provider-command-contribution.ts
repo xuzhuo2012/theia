@@ -18,6 +18,11 @@ import { injectable, inject, interfaces } from 'inversify';
 import { Command, CommandContribution, CommandRegistry, CommandHandler } from '@theia/core';
 import { FrontendApplicationContribution, LabelProviderContribution } from '@theia/core/lib/browser';
 import { SampleDynamicLabelProviderContribution } from './sample-dynamic-label-provider-contribution';
+import URI from '@theia/core/lib/common/uri';
+import { EditorManager } from '@theia/editor/lib/browser';
+import { FileNavigatorContribution } from '@theia/navigator/lib/browser/navigator-contribution';
+import { FileSearchService } from '@theia/file-search/lib/common/file-search-service';
+import { WorkspaceService } from '@theia/workspace/lib/browser';
 
 export namespace ExampleLabelProviderCommands {
     const EXAMPLE_CATEGORY = 'Examples';
@@ -34,10 +39,37 @@ export class SampleDynamicLabelProviderCommandContribution implements FrontendAp
     @inject(SampleDynamicLabelProviderContribution)
     protected readonly labelProviderContribution: SampleDynamicLabelProviderContribution;
 
+    @inject(EditorManager)
+    protected readonly editorManager: EditorManager;
+
+    @inject(FileNavigatorContribution)
+    protected readonly navigatorContribution: FileNavigatorContribution;
+
+    @inject(FileSearchService)
+    protected readonly fileSearch: FileSearchService;
+
+    @inject(WorkspaceService)
+    protected readonly workspaceService: WorkspaceService;
+
     initialize(): void { }
 
     registerCommands(commands: CommandRegistry): void {
         commands.registerCommand(ExampleLabelProviderCommands.TOGGLE_SAMPLE, new ExampleLabelProviderCommandHandler(this.labelProviderContribution));
+    }
+
+    onStart(): void {
+        this.navigatorContribution.openView({ activate: true }).then(() => {
+            this.workspaceService.roots.then(roots => {
+                if (roots.length) {
+                    const rootUris = roots.map(({ uri }) => uri);
+                    this.fileSearch.find('.ts', { rootUris, limit: 5 }).then(results => {
+                        for (const configUri of results) {
+                            this.editorManager.open(new URI(configUri), { mode: 'activate' });
+                        }
+                    });
+                }
+            });
+        });
     }
 
 }
