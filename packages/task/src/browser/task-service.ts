@@ -465,8 +465,18 @@ export class TaskService implements TaskConfigurationClient {
      * It looks for configured and detected tasks.
      */
     async run(source: string, taskLabel: string, scope?: string): Promise<TaskInfo | undefined> {
+        const startRun = new Date().valueOf();
+        console.error('+++++++++++++++++++++++++++++++++  TASK service !!! RUN 1 ', startRun);
+        console.error('++++  TASK service !!! RUN config ', source, taskLabel, scope);
+
         let task: TaskConfiguration | undefined;
         task = this.taskConfigurations.getTask(source, taskLabel);
+
+        console.error('+++ TASK service !!! RUN after get configured ', task);
+        const finishConfiged = new Date().valueOf();
+        console.info('!!!!!  TASK service !!! after get configed ', finishConfiged);
+        console.error('!!!!!  TASK service !!! get configed ', (finishConfiged - startRun) / 1000);
+
         if (!task) { // if a configured task cannot be found, search from detected tasks
             task = await this.getProvidedTask(source, taskLabel, scope);
             if (!task && scope) { // find from the customized detected tasks
@@ -478,6 +488,10 @@ export class TaskService implements TaskConfigurationClient {
             }
         }
         const customizationObject = await this.getTaskCustomization(task);
+
+        const finishConfig = new Date().valueOf();
+        console.info('!!!!!  TASK service !!! after get config 2 ', finishConfig);
+        console.error('!!!!!  TASK service !!! get config 1-2 ', (finishConfig - startRun) / 1000);
 
         if (!customizationObject.problemMatcher) {
             // ask the user what s/he wants to use to parse the task output
@@ -707,7 +721,14 @@ export class TaskService implements TaskConfigurationClient {
     }
 
     async runTask(task: TaskConfiguration, option?: RunTaskOption): Promise<TaskInfo | undefined> {
+        const startGetRunning = new Date().valueOf();
+        console.info('!!!!!  TASK service !!! run 5 ', startGetRunning);
+
         const runningTasksInfo: TaskInfo[] = await this.getRunningTasks();
+
+        const finishGetRunning = new Date().valueOf();
+        console.info('!!!!!  TASK service !!! run 6 ', finishGetRunning);
+        console.error('!!!!!  TASK service !!! get running 5-6 ', (finishGetRunning - startGetRunning) / 1000);
 
         // check if the task is active
         const matchedRunningTaskInfo = runningTasksInfo.find(taskInfo => {
@@ -769,7 +790,15 @@ export class TaskService implements TaskConfigurationClient {
             }
         }
 
+        const startResolve = new Date().valueOf();
+        console.info('!!!!!  TASK service !!! resolve 7 ', startResolve);
+        ////////
         const resolvedTask = await this.getResolvedTask(task);
+        ///////
+        const finishResolve = new Date().valueOf();
+        console.info('!!!!!  TASK service !!! after resolve 8 ', finishResolve);
+        console.error('!!!!!  TASK service !!! resolve 7-8 ', (finishResolve - startResolve) / 1000);
+
         if (resolvedTask) {
             // remove problem markers from the same source before running the task
             await this.removeProblemMarkers(option);
@@ -925,7 +954,16 @@ export class TaskService implements TaskConfigurationClient {
         const source = resolvedTask._source;
         const taskLabel = resolvedTask.label;
         try {
+
+            const startResolve = new Date().valueOf();
+            console.info('!!!!!  TASK service !!! run 9 ', startResolve);
+            ////////
             const taskInfo = await this.taskServer.run(resolvedTask, this.getContext(), option);
+            ///////
+            const finishResolve = new Date().valueOf();
+            console.info('!!!!!  TASK service !!! after run 10 ', finishResolve);
+            console.error('!!!!!  TASK service !!! run 9-10 ', (finishResolve - startResolve) / 1000);
+
             this.lastTask = { source, taskLabel, scope: resolvedTask._scope };
             this.logger.debug(`Task created. Task id: ${taskInfo.taskId}`);
 
@@ -998,13 +1036,32 @@ export class TaskService implements TaskConfigurationClient {
     }
 
     async attach(terminalId: number, taskId: number): Promise<void> {
+        const startGetRunning = new Date().valueOf();
+        console.error('************************* TASK service *** ATTACH ', terminalId, ' /// ', taskId);
         // Get the list of all available running tasks.
+
+        console.info('!!!!!  TASK service !!! attach 11 ', startGetRunning);
         const runningTasks: TaskInfo[] = await this.getRunningTasks();
+
+        const finishGetRunning = new Date().valueOf();
+        console.info('!!!!!  TASK service !!! attach 12 ', finishGetRunning);
+        console.error('!!!!!  TASK service !!! get running 11-12 ', (finishGetRunning - startGetRunning) / 1000);
+
         // Get the corresponding task information based on task id if available.
         const taskInfo: TaskInfo | undefined = runningTasks.find((t: TaskInfo) => t.taskId === taskId);
         let widgetOpenMode: WidgetOpenMode = 'open';
         if (taskInfo) {
+            console.info('*** TASK service *** ATTACH *** task info found', taskInfo);
+
+            const startGetTerminal = new Date().valueOf();
+            console.info('!!!!!  TASK service !!! run 13 ', startGetTerminal);
+
             const terminalWidget = this.terminalService.getByTerminalId(terminalId);
+
+            const finishGetTerminal = new Date().valueOf();
+            console.info('!!!!!  TASK service !!! run 14 ', finishGetTerminal);
+            console.error('!!!!!  TASK service !!! get running 13-14 ', (finishGetTerminal - startGetTerminal) / 1000);
+
             if (terminalWidget) {
                 this.messageService.error('Task is already running in terminal');
                 return this.terminalService.open(terminalWidget, { mode: 'activate' });
@@ -1016,6 +1073,8 @@ export class TaskService implements TaskConfigurationClient {
                     widgetOpenMode = 'reveal';
                 }
             }
+        } else {
+            console.error('*** TASK service *** ATTACH *** task info NOT found');
         }
         // Create / find a terminal widget to display an execution output of a task that was launched as a command inside a shell.
         const widget = await this.taskTerminalWidgetManager.open({
