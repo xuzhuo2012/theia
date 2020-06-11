@@ -8,6 +8,7 @@ Breaking Changes:
 
 - [task] Widened the scope of some methods in TaskManager and TaskConfigurations from string to TaskConfigurationScope. This is only breaking for extenders, not callers. [#7928](https://github.com/eclipse-theia/theia/pull/7928)
 - [shell] `ApplicationShell.TrackableWidgetProvider.getTrackableWidgets` is sync to register child widgets in the same tick, use `ApplicationShell.TrackableWidgetProvider.onDidChangeTrackableWidgets` if child widgets are added async
+- [json] Removed the `@theia/json` extension, replaced it with a VS Code extension. [#7981](https://github.com/eclipse-theia/theia/issues/7981).
 
 ## v1.2.0
 

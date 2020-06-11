@@ -103,6 +103,7 @@
     "vscode-builtin-java": "https://open-vsx.org/api/vscode/java/1.44.2/file/vscode.java-1.44.2.vsix",
     "vscode-builtin-javascript": "https://open-vsx.org/api/vscode/javascript/1.44.2/file/vscode.javascript-1.44.2.vsix",
     "vscode-builtin-json": "https://open-vsx.org/api/vscode/json/1.44.2/file/vscode.json-1.44.2.vsix",
+    "vscode-builtin-json-language-features": "https://open-vsx.org/api/vscode/json-language-features/1.44.2/file/vscode.json-language-features-1.44.2.vsix",
     "vscode-builtin-less": "https://open-vsx.org/api/vscode/less/1.44.2/file/vscode.less-1.44.2.vsix",
     "vscode-builtin-log": "https://open-vsx.org/api/vscode/log/1.44.2/file/vscode.log-1.44.2.vsix",
     "vscode-builtin-lua": "https://open-vsx.org/api/vscode/lua/1.44.2/file/vscode.lua-1.44.2.vsix",
