@@ -5,11 +5,18 @@
   "description": "Theia - Example code to demonstrate Theia API",
   "dependencies": {
     "@theia/core": "^1.2.0",
+    "@theia/electron": "^1.2.0",
     "@theia/output": "^1.2.0"
   },
   "theiaExtensions": [
     {
       "frontend": "lib/browser/api-samples-frontend-module"
+    },
+    {
+      "electronMain": "lib/electron-main/update/sample-updater-main-module"
+    },
+    {
+      "frontendElectron": "lib/electron-browser/updater/sample-updater-frontend-module"
     }
   ],
   "keywords": [

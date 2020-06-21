@@ -14,6 +14,9 @@
     },
     {
       "path": "../../packages/output/compile.tsconfig.json"
+    },
+    {
+      "path": "../../packages/electron/compile.tsconfig.json"
     }
   ]
 }
