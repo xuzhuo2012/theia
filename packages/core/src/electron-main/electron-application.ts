@@ -37,7 +37,7 @@ const createYargs: (argv?: string[], cwd?: string) => Argv = require('yargs/yarg
 export interface MainCommandOptions {
 
     /**
-     * By default, the first positional argument. Should be a file or a folder.
+     * By default, the first positional argument. Should be either a relative or absolute file-system path pointing to a file or a folder.
      */
     readonly file?: string;
 
