@@ -211,9 +211,13 @@ export class ElectronApplication {
         if (typeof options.file === 'undefined') {
             await this.openDefaultWindow();
         } else {
-            const workspacePath = await fs.realpath(path.resolve(params.cwd, options.file)).catch(() => undefined);
-            if (typeof workspacePath === 'undefined') {
-                console.error(`not a valid workspace path: "${options.file}"`);
+            let workspacePath: string | undefined = undefined;
+            try {
+                workspacePath = await fs.realpath(path.resolve(params.cwd, options.file));
+            } catch {
+                console.error(`Could not resolve the workspace path. "${options.file}" is not a valid 'file' option. Falling back to the default workspace location.`);
+            }
+            if (workspacePath === undefined) {
                 await this.openDefaultWindow();
             } else {
                 const uri = (await this.createWindowUri()).withFragment(workspacePath);
