@@ -56,6 +56,7 @@ function start(port, host, argv) {
     if (argv === undefined) {
         argv = process.argv;
     }
+
     const cliManager = container.get(CliManager);
     return cliManager.initializeCli(argv).then(function () {
         const application = container.get(BackendApplication);
