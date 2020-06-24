@@ -12,33 +12,10 @@
 
 ## Description
 
-The `@theia/electron` extension provides the main Electron entrypoint for Theia as well as runtime dependencies. The `@theia/electron` package is mandatory for any `electron`
-[application target](dev-packages/cli/README.md#build-target).
+The `@theia/electron` extension provides runtime dependencies for Theia. The `@theia/electron` package is mandatory for any `electron` [application
+target](dev-packages/cli/README.md#build-target).
 
-The default entrypoint will handle a very rudimentary CLI to open workspaces by doing `app path/to/workspace`. To override this behavior, you can extend and rebind the
-`ElectronApplication` class and overriding the `launch` method.
-
-A JSON-RPC communication between the Electron Main Process and the Renderer Processes is available: You can bind services using the `ElectronConnectionHandler` and
-`ElectronIpcConnectionProvider` APIs, example:
-
-From an `electron-main` module:
-
-```ts
-    bind(ElectronConnectionHandler).toDynamicValue(context =>
-        new JsonRpcConnectionHandler(electronMainWindowServicePath,
-            () => context.container.get(ElectronMainWindowService))
-    ).inSingletonScope();
-```
-
-And from the `electron-browser` module:
-
-```ts
-    bind(ElectronMainWindowService).toDynamicValue(context =>
-        ElectronIpcConnectionProvider.createProxy(context.container, electronMainWindowServicePath)
-    ).inSingletonScope();
-```
-
-The extension includes the following yarn/npm commands:
+The extension includes the following commands:
 
 - `npx electron-replace-ffmpeg [--help]`
 - `npx electron-codecs-test [--help]`
@@ -51,8 +28,6 @@ The post-install scripts can be skipped by setting an environment variable:
 - Mac/Linux: `export THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1`
 - Windows (cmd): `set THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1`
 - Windows (ps): `$env:THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1`
-- Windows (Git Bash): `export THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1`
-- Alternatively, you can use [`cross-env`](https://www.npmjs.com/package/cross-env), and do: `cross-env THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1` in your npm script for all platforms.
 
 ## Additional Information
 
