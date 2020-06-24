@@ -52,18 +52,17 @@ function load(raw) {
     )
 }
 
-async function start(port, host, argv) {
+function start(port, host, argv) {
     if (argv === undefined) {
         argv = process.argv;
     }
-
     const cliManager = container.get(CliManager);
-    await cliManager.initializeCli(argv);
-
-    const application = container.get(BackendApplication);
-    application.use(express.static(path.join(__dirname, '../../lib')));
-    application.use(express.static(path.join(__dirname, '../../lib/index.html')));
-    return application.start(port, host);
+    return cliManager.initializeCli(argv).then(function () {
+        const application = container.get(BackendApplication);
+        application.use(express.static(path.join(__dirname, '../../lib')));
+        application.use(express.static(path.join(__dirname, '../../lib/index.html')));
+        return application.start(port, host);
+    });
 }
 
 module.exports = (port, host, argv) => Promise.resolve()${this.compileBackendModuleImports(backendModules)}
