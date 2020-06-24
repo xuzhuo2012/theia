@@ -19,12 +19,12 @@ import { JsonRpcConnectionHandler } from '@theia/core/lib/common/messaging/proxy
 import { ElectronSecurityToken } from '@theia/core/lib/electron-common/electron-token';
 import { ContainerModule } from 'inversify';
 import { v4 } from 'uuid';
-import { ElectronMainWindowService, electronMainWindowServicePath } from '../electron-common/electron-window-protocol';
+import { ElectronMainWindowService, electronMainWindowServicePath } from '../../../../dev-packages/electron/src/electron-common/electron-window-protocol';
 import { ElectronApplication, ElectronMainContribution, ProcessArgv } from './electron-application';
 import { DefaultElectronMainWindowService } from './electron-window-service';
 import { ElectronMessagingContribution } from './messaging/electron-messaging-contribution';
 import { ElectronMessagingService } from './messaging/electron-messaging-service';
-import { ElectronConnectionHandler } from '../electron-common/messaging/electron-connection-handler';
+import { ElectronConnectionHandler } from '../../../../dev-packages/electron/src/electron-common/messaging/electron-connection-handler';
 
 const electronSecurityToken: ElectronSecurityToken = { value: v4() };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

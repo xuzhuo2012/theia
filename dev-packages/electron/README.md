@@ -51,6 +51,8 @@ The post-install scripts can be skipped by setting an environment variable:
 - Mac/Linux: `export THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1`
 - Windows (cmd): `set THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1`
 - Windows (ps): `$env:THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1`
+- Windows (Git Bash): `export THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1`
+- Alternatively, you can use [`cross-env`](https://www.npmjs.com/package/cross-env), and do: `cross-env THEIA_ELECTRON_SKIP_REPLACE_FFMPEG=1` in your npm script for all platforms.
 
 ## Additional Information
 

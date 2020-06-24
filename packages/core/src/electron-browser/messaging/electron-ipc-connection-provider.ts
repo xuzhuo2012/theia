@@ -14,16 +14,19 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { JsonRpcProxy } from '@theia/core/lib/common/messaging';
-import { WebSocketChannel } from '@theia/core/lib/common/messaging/web-socket-channel';
-import { AbstractConnectionProvider } from '@theia/core/lib/common/messaging/abstract-connection-provider';
-import { Event as ElectronEvent, ipcRenderer } from 'electron';
 import { injectable, interfaces } from 'inversify';
+import { Event as ElectronEvent, ipcRenderer } from 'electron';
+import { JsonRpcProxy } from '../../common/messaging';
+import { WebSocketChannel } from '../../common/messaging/web-socket-channel';
+import { AbstractConnectionProvider } from '../../common/messaging/abstract-connection-provider';
 import { THEIA_ELECTRON_IPC_CHANNEL_NAME } from '../../electron-common/messaging/electron-ipc-protocol';
 
 export interface ElectronIpcOptions {
 }
 
+/**
+ * Connection provider between the Theia frontend and the electron-main process via IPC.
+ */
 @injectable()
 export class ElectronIpcConnectionProvider extends AbstractConnectionProvider<ElectronIpcOptions> {
 

@@ -14,7 +14,7 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { ConnectionHandler } from '@theia/core/lib/common';
+import { ConnectionHandler } from '../../common/messaging/handler';
 
 /**
  * Electron-IPC-specific connection handler.

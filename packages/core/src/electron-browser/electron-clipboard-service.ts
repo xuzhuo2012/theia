@@ -1,5 +1,5 @@
 /********************************************************************************
- * Copyright (C) 2020 Ericsson and others.
+ * Copyright (C) 2019 RedHat and others.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0 which is available at
@@ -14,23 +14,20 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { shell } from 'electron';
-import { injectable, inject } from 'inversify';
-import { ElectronMainWindowService } from '../electron-common/electron-window-protocol';
-import { ElectronApplication } from './electron-application';
+import { clipboard } from 'electron';
+import { injectable } from 'inversify';
+
+import { ClipboardService } from '../browser/clipboard-service';
 
 @injectable()
-export class DefaultElectronMainWindowService implements ElectronMainWindowService {
+export class ElectronClipboardService implements ClipboardService {
 
-    @inject(ElectronApplication)
-    protected readonly app: ElectronApplication;
-
-    openElectronWindow(url: string): void {
-        this.app.openWindowWithWorkspace(url);
+    readText(): string {
+        return clipboard.readText();
     }
 
-    openExternalWindow(url: string): void {
-        shell.openExternal(url);
+    writeText(value: string): void {
+        clipboard.writeText(value);
     }
 
 }
