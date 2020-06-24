@@ -14,17 +14,25 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { ConnectionHandler } from '../../common/messaging/handler';
+import { shell } from 'electron';
+import { injectable, inject } from 'inversify';
+import { ElectronWindowService } from '../electron-common/electron-window-service';
+import { ElectronApplication } from './electron-application';
+import { NewWindowOptions } from '../browser/window/window-service';
 
-/**
- * Name of the channel used with `ipcMain.on/emit`.
- */
-export const THEIA_ELECTRON_IPC_CHANNEL_NAME = 'theia-electron-ipc';
+@injectable()
+export class ElectronWindowServiceImpl implements ElectronWindowService {
 
-/**
- * Electron-IPC-specific connection handler.
- * Use this if you want to establish communication between the frontend and the electron-main process.
- */
-export const ElectronConnectionHandler = Symbol('ElectronConnectionHandler');
-export interface ElectronConnectionHandler extends ConnectionHandler {
+    @inject(ElectronApplication)
+    protected readonly app: ElectronApplication;
+
+    openNewWindow(url: string, { external }: NewWindowOptions): undefined {
+        if (!!external) {
+            shell.openExternal(url);
+        } else {
+            this.app.openWindowWithWorkspace(url);
+        }
+        return undefined;
+    }
+
 }

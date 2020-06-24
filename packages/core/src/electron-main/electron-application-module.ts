@@ -19,9 +19,9 @@ import { v4 } from 'uuid';
 import { bindContributionProvider } from '../common/contribution-provider';
 import { JsonRpcConnectionHandler } from '../common/messaging/proxy-factory';
 import { ElectronSecurityToken } from '../electron-common/electron-token';
-import { ElectronMainWindowService, electronMainWindowServicePath } from '../electron-common/electron-window-service';
+import { ElectronWindowService, electronMainWindowServicePath } from '../electron-common/electron-window-service';
 import { ElectronApplication, ElectronMainContribution, ProcessArgv } from './electron-application';
-import { DefaultElectronMainWindowService } from './electron-window-service';
+import { ElectronWindowServiceImpl } from './electron-window-service-impl';
 import { ElectronMessagingContribution } from './messaging/electron-messaging-contribution';
 import { ElectronMessagingService } from './messaging/electron-messaging-service';
 import { ElectronConnectionHandler } from '../electron-common/messaging/electron-connection-handler';
@@ -41,10 +41,10 @@ export default new ContainerModule(bind => {
 
     bind(ElectronMainContribution).toService(ElectronMessagingContribution);
 
-    bind(ElectronMainWindowService).to(DefaultElectronMainWindowService).inSingletonScope();
+    bind(ElectronWindowService).to(ElectronWindowServiceImpl).inSingletonScope();
     bind(ElectronConnectionHandler).toDynamicValue(context =>
         new JsonRpcConnectionHandler(electronMainWindowServicePath,
-            () => context.container.get(ElectronMainWindowService))
+            () => context.container.get(ElectronWindowService))
     ).inSingletonScope();
 
     bind(ProcessArgv).toSelf().inSingletonScope();
