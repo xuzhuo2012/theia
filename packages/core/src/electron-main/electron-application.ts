@@ -186,16 +186,17 @@ export class ElectronApplication {
     }
 
     async openDefaultWindow(): Promise<BrowserWindow> {
-        const uri = await this.createWindowUri();
-        const electronWindow = await this.createWindow(this.getBrowserWindowOptions());
+        const [uri, electronWindow] = await Promise.all([
+            this.createWindowUri(),
+            this.createWindow(this.getBrowserWindowOptions())
+        ]);
         electronWindow.loadURL(uri.toString(true));
         return electronWindow;
     }
 
-    async openWindowWithWorkspace(workspace: string): Promise<BrowserWindow> {
-        const uri = (await this.createWindowUri()).withFragment(workspace);
+    async openWindowWithWorkspace(url: string): Promise<BrowserWindow> {
         const electronWindow = await this.createWindow(this.getBrowserWindowOptions());
-        electronWindow.loadURL(uri.toString(true));
+        electronWindow.loadURL(url);
         return electronWindow;
     }
 
@@ -215,7 +216,8 @@ export class ElectronApplication {
                 console.error(`not a valid workspace path: "${options.file}"`);
                 await this.openDefaultWindow();
             } else {
-                await this.openWindowWithWorkspace(workspacePath);
+                const uri = (await this.createWindowUri()).withFragment(workspacePath);
+                await this.openWindowWithWorkspace(uri.toString(true));
             }
         }
     }
@@ -242,7 +244,7 @@ export class ElectronApplication {
     protected getDefaultWindowState(): BrowserWindowConstructorOptions {
         // The `screen` API must be required when the application is ready.
         // See: https://electronjs.org/docs/api/screen#screen
-        // We must center by hand because \`browserWindow.center()\` fails on multi-screen setups
+        // We must center by hand because `browserWindow.center()` fails on multi-screen setups
         // See: https://github.com/electron/electron/issues/3490
         const { bounds } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
         const height = Math.floor(bounds.height * (2 / 3));
