@@ -16,7 +16,6 @@
 
 import { clipboard } from 'electron';
 import { injectable } from 'inversify';
-
 import { ClipboardService } from '../browser/clipboard-service';
 
 @injectable()
