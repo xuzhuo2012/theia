@@ -39,7 +39,7 @@ export interface MainCommandOptions {
     /**
      * By default, the first positional argument. Should be a file or a folder.
      */
-    readonly file?: string
+    readonly file?: string;
 
 }
 

@@ -17,10 +17,7 @@
 import { NewWindowOptions } from '../browser/window/window-service';
 
 export const electronMainWindowServicePath = '/services/electron-window';
-
 export const ElectronWindowService = Symbol('ElectronWindowService');
 export interface ElectronWindowService {
-
     openNewWindow(url: string, options?: NewWindowOptions): undefined;
-
 }

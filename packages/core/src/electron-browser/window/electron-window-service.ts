@@ -17,13 +17,13 @@
 import { injectable, inject } from 'inversify';
 import { NewWindowOptions } from '../../browser/window/window-service';
 import { DefaultWindowService } from '../../browser/window/default-window-service';
-import { ElectronWindowService as IpcElectronWindowService } from '../../electron-common/electron-window-service';
+import { ElectronWindowService as ElectronMainWindowService } from '../../electron-common/electron-window-service';
 
 @injectable()
 export class ElectronWindowService extends DefaultWindowService {
 
-    @inject(IpcElectronWindowService)
-    protected readonly delegate: IpcElectronWindowService;
+    @inject(ElectronMainWindowService)
+    protected readonly delegate: ElectronMainWindowService;
 
     openNewWindow(url: string, { external }: NewWindowOptions = {}): undefined {
         this.delegate.openNewWindow(url, { external });
