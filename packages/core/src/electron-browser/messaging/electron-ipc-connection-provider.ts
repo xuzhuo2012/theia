@@ -19,7 +19,7 @@ import { Event as ElectronEvent, ipcRenderer } from 'electron';
 import { JsonRpcProxy } from '../../common/messaging';
 import { WebSocketChannel } from '../../common/messaging/web-socket-channel';
 import { AbstractConnectionProvider } from '../../common/messaging/abstract-connection-provider';
-import { THEIA_ELECTRON_IPC_CHANNEL_NAME } from '../../electron-common/messaging/electron-ipc-protocol';
+import { THEIA_ELECTRON_IPC_CHANNEL_NAME } from '../../electron-common/messaging/electron-connection-handler';
 
 export interface ElectronIpcOptions {
 }

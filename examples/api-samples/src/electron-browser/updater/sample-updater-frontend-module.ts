@@ -15,7 +15,7 @@
  ********************************************************************************/
 
 import { ContainerModule } from 'inversify';
-import { ElectronIpcConnectionProvider } from '@theia/electron/lib/electron-browser/messaging/electron-ipc-connection-provider';
+import { ElectronIpcConnectionProvider } from '@theia/core/lib/electron-browser/messaging/electron-ipc-connection-provider';
 import { CommandContribution, MenuContribution } from '@theia/core/lib/common';
 import { SampleUpdater, SampleUpdaterPath, SampleUpdaterClient } from '../../common/updater/sample-updater';
 import { SampleUpdaterFrontendContribution, ElectronMenuUpdater, SampleUpdaterClientImpl } from './sample-updater-frontend-contribution';

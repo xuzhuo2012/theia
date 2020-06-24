@@ -14,21 +14,20 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { ContributionProvider } from '@theia/core/lib/common/contribution-provider';
-import { MaybePromise } from '@theia/core/lib/common/types';
-import URI from '@theia/core/lib/common/uri';
-import { ElectronSecurityToken } from '@theia/core/lib/electron-common/electron-token';
-import { fork, ForkOptions } from 'child_process';
-import * as electron from 'electron';
-import { app, BrowserWindow, BrowserWindowConstructorOptions, Event as ElectronEvent, shell, dialog } from 'electron';
-import { promises as fs } from 'fs';
 import { inject, injectable, named } from 'inversify';
-import { AddressInfo } from 'net';
+import { session, screen, globalShortcut, app, BrowserWindow, BrowserWindowConstructorOptions, Event as ElectronEvent, shell, dialog } from 'electron';
 import * as path from 'path';
 import { Argv } from 'yargs';
-import { FileUri } from '@theia/core/lib/node';
-import { Deferred } from '@theia/core/lib/common/promise-util';
-import { FrontendApplicationConfig } from '@theia/application-package';
+import { AddressInfo } from 'net';
+import { promises as fs } from 'fs';
+import { fork, ForkOptions } from 'child_process';
+import { FrontendApplicationConfig } from '@theia/application-package/lib/application-props';
+import URI from '../common/uri';
+import { FileUri } from '../node/file-uri';
+import { Deferred } from '../common/promise-util';
+import { MaybePromise } from '../common/types';
+import { ContributionProvider } from '../common/contribution-provider';
+import { ElectronSecurityToken } from '../electron-common/electron-token';
 const Storage = require('electron-store');
 const createYargs: (argv?: string[], cwd?: string) => Argv = require('yargs/yargs');
 
@@ -243,7 +242,6 @@ export class ElectronApplication {
     protected getDefaultWindowState(): BrowserWindowConstructorOptions {
         // The `screen` API must be required when the application is ready.
         // See: https://electronjs.org/docs/api/screen#screen
-        const { screen } = require('electron');
         // We must center by hand because \`browserWindow.center()\` fails on multi-screen setups
         // See: https://github.com/electron/electron/issues/3490
         const { bounds } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
@@ -335,12 +333,12 @@ export class ElectronApplication {
             const accelerators = ['CmdOrCtrl+R', 'F5'];
             electronWindow.on('focus', () => {
                 for (const accelerator of accelerators) {
-                    electron.globalShortcut.register(accelerator, () => { });
+                    globalShortcut.register(accelerator, () => { });
                 }
             });
             electronWindow.on('blur', () => {
                 for (const accelerator of accelerators) {
-                    electron.globalShortcut.unregister(accelerator);
+                    globalShortcut.unregister(accelerator);
                 }
             });
         }
@@ -399,7 +397,7 @@ export class ElectronApplication {
 
     protected async attachElectronSecurityToken(port: number): Promise<void> {
         await new Promise((resolve, reject) => {
-            electron.session.defaultSession!.cookies.set({
+            session.defaultSession!.cookies.set({
                 url: `http://localhost:${port}`,
                 name: ElectronSecurityToken,
                 value: JSON.stringify(this.electronSecurityToken),

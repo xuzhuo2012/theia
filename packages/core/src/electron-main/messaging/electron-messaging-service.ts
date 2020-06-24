@@ -14,9 +14,8 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { MessageConnection } from 'vscode-jsonrpc';
-
-import { WebSocketChannel } from '@theia/core/lib/common/messaging/web-socket-channel';
+import type { MessageConnection } from 'vscode-jsonrpc';
+import type { WebSocketChannel } from '../../common/messaging/web-socket-channel';
 
 export interface ElectronMessagingService {
     /**

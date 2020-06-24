@@ -15,7 +15,7 @@
  ********************************************************************************/
 
 import { injectable } from 'inversify';
-import { ElectronMainContribution } from '@theia/electron/lib/electron-main/electron-application';
+import { ElectronMainContribution } from '@theia/core/lib/electron-main/electron-application';
 import { SampleUpdater, SampleUpdaterClient, UpdateStatus } from '../../common/updater/sample-updater';
 
 @injectable()

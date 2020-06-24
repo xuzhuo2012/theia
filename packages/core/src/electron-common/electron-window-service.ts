@@ -14,7 +14,13 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-/**
- * Name of the channel used with `ipcMain.on/emit`.
- */
-export const THEIA_ELECTRON_IPC_CHANNEL_NAME = 'theia-electron-ipc';
+import { NewWindowOptions } from '../browser/window/window-service';
+
+export const electronMainWindowServicePath = '/services/electron-window';
+
+export const ElectronMainWindowService = Symbol('ElectronMainWindowService');
+export interface ElectronMainWindowService {
+
+    openNewWindow(url: string, options?: NewWindowOptions): undefined;
+
+}

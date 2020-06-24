@@ -17,6 +17,11 @@
 import { ConnectionHandler } from '../../common/messaging/handler';
 
 /**
+ * Name of the channel used with `ipcMain.on/emit`.
+ */
+export const THEIA_ELECTRON_IPC_CHANNEL_NAME = 'theia-electron-ipc';
+
+/**
  * Electron-IPC-specific connection handler.
  */
 export const ElectronConnectionHandler = Symbol('ElectronConnectionHandler');

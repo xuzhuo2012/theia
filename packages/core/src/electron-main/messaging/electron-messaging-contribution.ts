@@ -18,13 +18,11 @@ import { Event as ElectronEvent, ipcMain, WebContents } from 'electron';
 import { inject, injectable, named, postConstruct } from 'inversify';
 import { MessageConnection } from 'vscode-jsonrpc';
 import { createWebSocketConnection } from 'vscode-ws-jsonrpc/lib/socket/connection';
-
-import { ContributionProvider } from '@theia/core/lib/common/contribution-provider';
-import { WebSocketChannel } from '@theia/core/lib/common/messaging/web-socket-channel';
-import { MessagingContribution } from '@theia/core/lib/node/messaging/messaging-contribution';
-import { ConsoleLogger } from '@theia/core/lib/node/messaging/logger';
-
-import { THEIA_ELECTRON_IPC_CHANNEL_NAME } from '../../electron-common/messaging/electron-ipc-protocol';
+import { ContributionProvider } from '../../common/contribution-provider';
+import { WebSocketChannel } from '../../common/messaging/web-socket-channel';
+import { MessagingContribution } from '../../node/messaging/messaging-contribution';
+import { ConsoleLogger } from '../../node/messaging/logger';
+import { THEIA_ELECTRON_IPC_CHANNEL_NAME } from '../../electron-common/messaging/electron-connection-handler';
 import { ElectronMainContribution } from '../electron-application';
 import { ElectronMessagingService } from './electron-messaging-service';
 import { ElectronConnectionHandler } from '../../electron-common/messaging/electron-connection-handler';

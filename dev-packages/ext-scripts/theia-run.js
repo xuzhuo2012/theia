@@ -1,5 +1,7 @@
+#!/usr/bin/env node
+
 /********************************************************************************
- * Copyright (C) 2020 Ericsson and others.
+ * Copyright (C) 2017 TypeFox and others.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0 which is available at
@@ -13,26 +15,12 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
+// @ts-check
+const path = require('path');
 
-import { shell } from 'electron';
-import { injectable, inject } from 'inversify';
-import { ElectronMainWindowService } from '../electron-common/electron-window-service';
-import { ElectronApplication } from './electron-application';
-import { NewWindowOptions } from '../browser/window/window-service';
+const index = process.argv.findIndex(arg => arg.indexOf('run') !== -1);
+const args = process.argv.slice(index + 1);
+const scopedArgs = args.length > 1 ? [args[0], '--scope', ...args.slice(1)] : args;
+process.argv = [...process.argv.slice(0, index + 1), 'run', ...scopedArgs];
 
-@injectable()
-export class DefaultElectronMainWindowService implements ElectronMainWindowService {
-
-    @inject(ElectronApplication)
-    protected readonly app: ElectronApplication;
-
-    openNewWindow(url: string, { external }: NewWindowOptions): undefined {
-        if (!!external) {
-            shell.openExternal(url);
-        } else {
-            this.app.openWindowWithWorkspace(url);
-        }
-        return undefined;
-    }
-
-}
+require(path.resolve(__dirname, '..', '..', 'scripts', 'lerna'));

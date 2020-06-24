@@ -16,8 +16,8 @@
 
 import { ContainerModule } from 'inversify';
 import { JsonRpcConnectionHandler } from '@theia/core/lib/common';
-import { ElectronMainContribution } from '@theia/electron/lib/electron-main/electron-application';
-import { ElectronConnectionHandler } from '@theia/electron/lib/electron-common/messaging/electron-connection-handler';
+import { ElectronMainContribution } from '@theia/core/lib/electron-main/electron-application';
+import { ElectronConnectionHandler } from '@theia/core/lib/electron-common/messaging/electron-connection-handler';
 import { SampleUpdaterPath, SampleUpdater, SampleUpdaterClient } from '../../common/updater/sample-updater';
 import { SampleUpdaterImpl } from './sample-updater-impl';
 
