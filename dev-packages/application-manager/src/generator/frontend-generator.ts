@@ -79,15 +79,13 @@ const { messagingFrontendModule } = require('@theia/core/lib/${this.pck.isBrowse
                 : 'electron-browser/messaging/electron-messaging-frontend-module'}');
 const { loggerFrontendModule } = require('@theia/core/lib/browser/logger-frontend-module');
 const { ThemeService } = require('@theia/core/lib/browser/theming');
-const { FrontendApplicationConfigProvider } = require('@theia/core/lib/browser/frontend-application-config-provider');${this.pck.ifElectron(`
-const { electronMessagingModule } = require('@theia/electron/lib/electron-browser/messaging/electron-messaging-frontend-module');`)}
+const { FrontendApplicationConfigProvider } = require('@theia/core/lib/browser/frontend-application-config-provider');
 
 FrontendApplicationConfigProvider.set(${this.prettyStringify(this.pck.props.frontend.config)});
 
 const container = new Container();
 container.load(frontendApplicationModule);
-container.load(messagingFrontendModule);${this.pck.ifElectron(`
-container.load(electronMessagingModule);`)}
+container.load(messagingFrontendModule);
 container.load(loggerFrontendModule);
 
 function load(raw) {
@@ -135,8 +133,8 @@ if (process.env.LC_ALL) {
 }
 process.env.LC_NUMERIC = 'C';
 
-const { default: electronApplicationModule } = require('@theia/electron/lib/electron-main/electron-application-module');
-const { ElectronApplication, ElectronApplicationGlobals } = require('@theia/electron/lib/electron-main/electron-application');
+const { default: electronApplicationModule } = require('@theia/core/lib/electron-main/electron-application-module');
+const { ElectronApplication, ElectronApplicationGlobals } = require('@theia/core/lib/electron-main/electron-application');
 const { Container } = require('inversify');
 const { resolve } = require('path');
 const { app } = require('electron');

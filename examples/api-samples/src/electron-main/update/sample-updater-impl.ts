@@ -56,7 +56,11 @@ export class SampleUpdaterImpl implements SampleUpdater, ElectronMainContributio
     }
 
     onStart(): void {
-        console.log('SAMPLE UPDATER: onStart');
+        console.log('Started electron-main updater sample.');
+    }
+
+    onStop(): void {
+        console.log('Stopped electron-main updater sample.');
     }
 
     setClient(client: SampleUpdaterClient | undefined): void {
