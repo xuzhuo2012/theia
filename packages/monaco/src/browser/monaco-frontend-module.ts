@@ -18,13 +18,11 @@ import '../../src/browser/style/index.css';
 import '../../src/browser/style/symbol-sprite.svg';
 import '../../src/browser/style/symbol-icons.css';
 
-import debounce = require('lodash.debounce');
 import { ContainerModule, decorate, injectable, interfaces } from 'inversify';
 import { MenuContribution, CommandContribution } from '@theia/core/lib/common';
-import { PreferenceScope } from '@theia/core/lib/common/preferences/preference-scope';
 import {
     QuickOpenService, FrontendApplicationContribution, KeybindingContribution,
-    PreferenceService, PreferenceSchemaProvider, createPreferenceProxy, QuickOpenContribution, PreferenceChanges
+    PreferenceService, PreferenceSchemaProvider, createPreferenceProxy, QuickOpenContribution, PreferenceChanges, PreferenceScope
 } from '@theia/core/lib/browser';
 import { TextEditorProvider, DiffNavigatorProvider } from '@theia/editor/lib/browser';
 import { StrictEditorTextFocusContext } from '@theia/editor/lib/browser/editor-keybinding-contexts';
@@ -162,16 +160,6 @@ export function createMonacoConfigurationService(container: interfaces.Container
         return proxy;
     };
 
-    const initFromConfiguration = debounce(() => {
-        const event = new monaco.services.ConfigurationChangeEvent();
-        event._source = 6 /* DEFAULT */;
-        service._onDidChangeConfiguration.fire(event);
-    });
-    preferences.onPreferenceChanged(e => {
-        if (e.scope === PreferenceScope.Default) {
-            initFromConfiguration();
-        }
-    });
     const parseSections = (changes?: PreferenceChanges) => {
         if (!changes) {
             return undefined;
@@ -190,11 +178,34 @@ export function createMonacoConfigurationService(container: interfaces.Container
         }
         return sections;
     };
+
+    const toTarget = (scope: PreferenceScope): monaco.services.ConfigurationTarget => {
+        switch (scope) {
+            case PreferenceScope.Default: return monaco.services.ConfigurationTarget.DEFAULT;
+            case PreferenceScope.User: return monaco.services.ConfigurationTarget.USER;
+            case PreferenceScope.Workspace: return monaco.services.ConfigurationTarget.WORKSPACE;
+            case PreferenceScope.Folder: return monaco.services.ConfigurationTarget.WORKSPACE_FOLDER;
+        }
+    };
+
     preferences.onPreferencesChanged((changes?: PreferenceChanges) => {
         const affectedSections = parseSections(changes);
+
+        let target: monaco.services.ConfigurationTarget | undefined;
+        if (changes && affectedSections && affectedSections.length > 0) {
+            const change = changes[affectedSections[0]];
+            target = toTarget(change.scope);
+        }
+
         if (affectedSections) {
-            const event = new monaco.services.ConfigurationChangeEvent();
-            event.change(affectedSections);
+            const keys = affectedSections || [];
+            const previous = { data: service._configuration.toData() };
+            const event = new monaco.services.ConfigurationChangeEvent({ keys, overrides: [] }, previous, service._configuration);
+
+            if (target) {
+                event.source = target;
+            }
+
             service._onDidChangeConfiguration.fire(event);
         }
     });
