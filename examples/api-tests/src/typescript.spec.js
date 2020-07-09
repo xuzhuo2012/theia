@@ -187,6 +187,13 @@ module.exports = (port, host, argv) => Promise.resolve()
     }
 
     /**
+     * @param {number} ms
+     */
+    function wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    } 
+
+    /**
      * We ignore attributes on purprse since they are not stable.
      * But structure is important for us to see whether the plain text is rendered or markdown.
      *
@@ -521,6 +528,8 @@ module.exports = (port, host, argv) => Promise.resolve()
         keybindings.dispatchKeyDown('Enter', input);
 
         await renaming;
+        await wait(100); // delay to get UI changes
+
         assert.isTrue(contextKeyService.match('editorTextFocus'));
         assert.isFalse(contextKeyService.match('renameInputVisible'));
 
