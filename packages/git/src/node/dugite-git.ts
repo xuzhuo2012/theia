@@ -17,7 +17,7 @@
 import * as fs from 'fs-extra';
 import * as Path from 'path';
 import { injectable, inject, postConstruct } from 'inversify';
-import { git } from 'dugite-extra/lib/core/git';
+import { git, gitVersion, IGitExecutionOptions } from 'dugite-extra/lib/core/git';
 import { push } from 'dugite-extra/lib/command/push';
 import { pull } from 'dugite-extra/lib/command/pull';
 import { clone } from 'dugite-extra/lib/command/clone';
@@ -32,7 +32,7 @@ import { reset, GitResetMode } from 'dugite-extra/lib/command/reset';
 import { getTextContents, getBlobContents } from 'dugite-extra/lib/command/show';
 import { checkoutBranch, checkoutPaths } from 'dugite-extra/lib/command/checkout';
 import { createBranch, deleteBranch, renameBranch, listBranch } from 'dugite-extra/lib/command/branch';
-import { IStatusResult, IAheadBehind, AppFileStatus, WorkingDirectoryStatus as DugiteStatus, FileChange as DugiteFileChange } from 'dugite-extra/lib/model/status';
+import { IAheadBehind, AppFileStatus, FileChange as DugiteFileChange } from 'dugite-extra/lib/model/status';
 import { Branch as DugiteBranch } from 'dugite-extra/lib/model/branch';
 import { Commit as DugiteCommit, CommitIdentity as DugiteCommitIdentity } from 'dugite-extra/lib/model/commit';
 import { ILogger } from '@theia/core';
@@ -373,8 +373,249 @@ export class DugiteGit implements Git {
         await this.ready.promise;
         const repositoryPath = this.getFsPath(repository);
         const [exec, env] = await Promise.all([this.execProvider.exec(), this.gitEnv.promise]);
-        const dugiteStatus = await getStatus(repositoryPath, true, this.limit, { exec, env });
-        return this.mapStatus(dugiteStatus, repository);
+
+        const noOptionalLocks = true;
+        const options: IGitExecutionOptions = { exec, env };
+
+        const args: string[] = [];
+        if (noOptionalLocks) {
+            // We need to check if the configured git version can use it or not. It is supported from 2.15.0
+            if (typeof process.env.GIT__CAN_USE_NO_OPTIONAL_LOCKS === 'undefined') {
+                console.info("Checking whether '--no-optional-locks' can be used with the current Git executable. Minimum required version is '2.15.0'.");
+                let version: string | undefined;
+                let canUseNoOptionalLocks = false;
+                try {
+                    version = await gitVersion(options);
+                } catch (e) {
+                    console.error('Error ocurred when determining the Git version.', e);
+                }
+                if (!version) {
+                    console.warn("Cannot determine the Git version. Disabling '--no-optional-locks' for all subsequent calls.");
+                } else {
+                    const parsed = version.replace(/^git version /, '');
+                    const [rawMajor, rawMinor] = parsed.split('.');
+                    if (rawMajor && rawMinor) {
+                        const major = parseInt(rawMajor, 10);
+                        const minor = parseInt(rawMinor, 10);
+                        if (Number.isInteger(major) && Number.isInteger(minor)) {
+                            canUseNoOptionalLocks = major >= 2 && minor >= 15;
+                        }
+                    }
+                    if (!canUseNoOptionalLocks) {
+                        console.warn(`Git version was: '${parsed}'. Disabling '--no-optional-locks' for all subsequent calls.`);
+                    } else {
+                        console.info(`'--no-optional-locks' is a valid Git option for the current Git version: '${parsed}'.`);
+                    }
+                }
+                process.env.GIT__CAN_USE_NO_OPTIONAL_LOCKS = `${canUseNoOptionalLocks}`;
+            }
+            if (process.env.GIT__CAN_USE_NO_OPTIONAL_LOCKS === 'true') {
+                args.push('--no-optional-locks');
+            }
+        }
+        args.push('status', '--untracked-files=all', '--branch', '--porcelain=2', '-z');
+        const result = await git(
+            args,
+            repositoryPath,
+            'getStatus',
+            options
+        );
+
+        let currentBranch: string | undefined = undefined;
+        let currentUpstreamBranch: string | undefined = undefined;
+        let currentTip: string | undefined = undefined;
+        let branchAheadBehind: IAheadBehind | undefined = undefined;
+
+        const ChangedEntryType = '1';
+        const RenamedOrCopiedEntryType = '2';
+        const UnmergedEntryType = 'u';
+        const UntrackedEntryType = '?';
+        const IgnoredEntryType = '!';
+
+        interface IStatusHeader {
+            readonly value: string
+        }
+
+        /** A representation of a parsed status entry from git status */
+        interface IStatusEntry {
+            /** The path to the file relative to the repository root */
+            readonly path: string
+
+            /** The two character long status code */
+            readonly statusCode: string
+        }
+
+        function parseEntry(field: string, fieldsToSkip: number): IStatusEntry {
+            let position = 4;
+            while (fieldsToSkip !== 0) {
+                position = field.indexOf(' ', position + 1);
+                fieldsToSkip--;
+            }
+            return {
+                statusCode: field.substring(2, 4),
+                path: field.substring(position + 1)
+            };
+        }
+        // 1 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <path>
+        function parseChangedEntry(field: string): IStatusEntry {
+            return parseEntry(field, 6);
+        }
+
+        // 2 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <X><score> <path><sep><origPath>
+        function parsedRenamedOrCopiedEntry(field: string): IStatusEntry {
+            return parseEntry(field, 7);
+        }
+
+        // u <xy> <sub> <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>
+        function parseUnmergedEntry(field: string): IStatusEntry {
+            return parseEntry(field, 8);
+        }
+
+        function parseUntrackedEntry(field: string): IStatusEntry {
+            return {
+                statusCode: '??',
+                path: field.substring(2),
+            };
+        }
+
+        const headers = new Array<IStatusHeader>();
+        const changes = new Array<GitFileChange>();
+        let limitCounter = 0;
+        let incomplete = false;
+        const fields = result.stdout.split('\0');
+        for (let i = 0; i < fields.length; i++) {
+            const field = fields[i];
+
+            if (limitCounter === this.limit) {
+                incomplete = true;
+                break;
+            }
+
+            if (field.startsWith('# ') && field.length > 2) {
+                headers.push({ value: field.substr(2) });
+                continue;
+            }
+
+            const entryKind = field.substr(0, 1);
+            switch (entryKind) {
+                case ChangedEntryType: {
+                    const entry = parseChangedEntry(field);
+                    const uri = this.getUri(Path.join(repositoryPath, entry.path));
+                    if (entry.statusCode[0] !== '.') {
+                        changes.push({
+                            uri,
+                            staged: true,
+                            status: this.getStatusFromCode(entry.statusCode[0]),
+                        });
+                    }
+                    if (entry.statusCode[1] !== '.') {
+                        changes.push({
+                            uri,
+                            staged: false,
+                            status: this.getStatusFromCode(entry.statusCode[1]),
+                        });
+                    }
+                    break;
+                }
+                case RenamedOrCopiedEntryType: {
+                    const oldPathFromNextLine = fields[++i];
+                    const entry = parsedRenamedOrCopiedEntry(field);
+                    const uri = this.getUri(Path.join(repositoryPath, entry.path));
+                    const oldUri = this.getUri(Path.join(repositoryPath, oldPathFromNextLine));
+                    if (entry.statusCode[0] !== '.') {
+                        changes.push({
+                            uri,
+                            staged: true,
+                            ...this.getStatusAndOldUri(entry.statusCode[0], oldUri)
+                        });
+                    }
+                    if (entry.statusCode[1] !== '.') {
+                        changes.push({
+                            uri,
+                            staged: false,
+                            ...this.getStatusAndOldUri(entry.statusCode[1], oldUri)
+                        });
+                    }
+                    break;
+                }
+                case UnmergedEntryType: {
+                    const entry = parseUnmergedEntry(field);
+                    const change: GitFileChange = {
+                        uri: this.getUri(Path.join(repositoryPath, entry.path)),
+                        status: GitFileStatus.Conflicted,
+                    };
+                    changes.push(change);
+                    break;
+                }
+                case UntrackedEntryType: {
+                    const entry = parseUntrackedEntry(field);
+                    const change: GitFileChange = {
+                        uri: this.getUri(Path.join(repositoryPath, entry.path)),
+                        status: GitFileStatus.New,
+                        staged: false
+                    };
+                    changes.push(change);
+                    break;
+                }
+                case IgnoredEntryType:
+                    // Ignored, we don't care about these for now
+            }
+
+            limitCounter++;
+        }
+
+        for (const entry of headers) {
+            let m: RegExpMatchArray | null;
+            const value = entry.value;
+
+            // This intentionally does not match branch.oid initial
+            if ((m = value.match(/^branch\.oid ([a-f0-9]+)$/))) {
+                currentTip = m[1];
+            } else if ((m = value.match(/^branch.head (.*)/))) {
+                if (m[1] !== '(detached)') {
+                    currentBranch = m[1];
+                }
+            } else if ((m = value.match(/^branch.upstream (.*)/))) {
+                currentUpstreamBranch = m[1];
+            } else if ((m = value.match(/^branch.ab \+(\d+) -(\d+)$/))) {
+                const ahead = parseInt(m[1], 10);
+                const behind = parseInt(m[2], 10);
+
+                if (!isNaN(ahead) && !isNaN(behind)) {
+                    branchAheadBehind = { ahead, behind };
+                }
+            }
+        }
+
+        return {
+            branch: currentBranch,
+            currentHead: currentTip,
+            upstreamBranch: currentUpstreamBranch,
+            aheadBehind: branchAheadBehind,
+            exists: true,
+            changes,
+            incomplete
+        };
+    }
+
+    protected getStatusFromCode(statusCode: string): GitFileStatus {
+        switch (statusCode) {
+            case 'M': return GitFileStatus.Modified;
+            case 'D': return GitFileStatus.Deleted;
+            case 'A': return GitFileStatus.New;
+            case 'R': return GitFileStatus.Renamed;
+            case 'C': return GitFileStatus.Copied;
+            default: throw new Error(`Unexpected application file status: ${statusCode}`);
+        }
+    }
+
+    protected getStatusAndOldUri(statusCharacter: string, oldPath: string): { status: GitFileStatus, oldPath?: string } {
+        const status = this.getStatusFromCode(statusCharacter);
+        if (statusCharacter === 'R' || statusCharacter === 'C') {
+            return { status, oldPath };
+        } else {
+            return { status };
+        }
     }
 
     async add(repository: Repository, uri: string | string[]): Promise<void> {
@@ -856,54 +1097,6 @@ export class DugiteGit implements Git {
             email: toMap.email,
             name: toMap.name,
         };
-    }
-
-    private async mapStatus(toMap: IStatusResult, repository: Repository): Promise<WorkingDirectoryStatus> {
-        const repositoryPath = this.getFsPath(repository);
-        const [aheadBehind, changes] = await Promise.all([this.mapAheadBehind(toMap.branchAheadBehind), this.mapFileChanges(toMap.workingDirectory, repositoryPath)]);
-        return {
-            exists: toMap.exists,
-            branch: toMap.currentBranch,
-            upstreamBranch: toMap.currentUpstreamBranch,
-            aheadBehind,
-            changes,
-            currentHead: toMap.currentTip,
-            incomplete: toMap.incomplete
-        };
-    }
-
-    private async mapAheadBehind(toMap: IAheadBehind | undefined): Promise<{ ahead: number, behind: number } | undefined> {
-        return toMap ? { ...toMap } : undefined;
-    }
-
-    private async mapFileChanges(toMap: DugiteStatus, repositoryPath: string): Promise<GitFileChange[]> {
-        return Promise.all(toMap.files.map(file => this.mapFileChange(file, repositoryPath)));
-    }
-
-    private async mapFileChange(toMap: DugiteFileChange, repositoryPath: string): Promise<GitFileChange> {
-        const [uri, status, oldUri] = await Promise.all([
-            this.getUri(Path.join(repositoryPath, toMap.path)),
-            this.mapFileStatus(toMap.status),
-            toMap.oldPath ? this.getUri(Path.join(repositoryPath, toMap.oldPath)) : undefined
-        ]);
-        return {
-            uri,
-            status,
-            oldUri,
-            staged: toMap.staged
-        };
-    }
-
-    private mapFileStatus(toMap: AppFileStatus): GitFileStatus {
-        switch (toMap) {
-            case AppFileStatus.Conflicted: return GitFileStatus.Conflicted;
-            case AppFileStatus.Copied: return GitFileStatus.Copied;
-            case AppFileStatus.Deleted: return GitFileStatus.Deleted;
-            case AppFileStatus.Modified: return GitFileStatus.Modified;
-            case AppFileStatus.New: return GitFileStatus.New;
-            case AppFileStatus.Renamed: return GitFileStatus.Renamed;
-            default: throw new Error(`Unexpected application file status: ${toMap}`);
-        }
     }
 
     private mapRange(toMap: Git.Options.Range | undefined): string {
