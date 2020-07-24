@@ -25,7 +25,9 @@ import {
     StatusBarEntry,
     KeybindingRegistry,
     ViewContainerTitleOptions,
-    ViewContainer} from '@theia/core/lib/browser';
+    ViewContainer,
+    Widget
+} from '@theia/core/lib/browser';
 import { TabBarToolbarContribution, TabBarToolbarRegistry, TabBarToolbarItem } from '@theia/core/lib/browser/shell/tab-bar-toolbar';
 import { CommandRegistry, Command, Disposable, DisposableCollection, CommandService } from '@theia/core/lib/common';
 import { ContextKeyService, ContextKey } from '@theia/core/lib/browser/context-key-service';
@@ -65,6 +67,10 @@ export namespace SCM_COMMANDS {
         tooltip: 'Toggle to List View',
         iconClass: 'codicon codicon-list-flat',
         label: 'Toggle to List View',
+    };
+    export const COLLAPSE_ALL = {
+        id: 'scm.collapseAll',
+        iconClass: 'codicon codicon-collapse-all',
     };
 }
 
@@ -137,6 +143,11 @@ export class ScmContribution extends AbstractViewContribution<ScmWidget> impleme
             execute: () => this.acceptInput(),
             isEnabled: () => !!this.scmFocus.get() && !!this.acceptInputCommand()
         });
+        commandRegistry.registerCommand(SCM_COMMANDS.COLLAPSE_ALL, {
+            isEnabled: widget => this.withWidget(widget, () => true),
+            isVisible: widget => this.withWidget(widget, () => true),
+            execute: w => this.withWidget(w, widget => widget.collapseAll())
+        });
     }
 
     registerToolbarItems(registry: TabBarToolbarRegistry): void {
@@ -180,6 +191,11 @@ export class ScmContribution extends AbstractViewContribution<ScmWidget> impleme
         };
         registerToggleViewItem(SCM_COMMANDS.TREE_VIEW_MODE, 'tree');
         registerToggleViewItem(SCM_COMMANDS.LIST_VIEW_MODE, 'list');
+        registry.registerItem({
+            id: SCM_COMMANDS.COLLAPSE_ALL.id,
+            command: SCM_COMMANDS.COLLAPSE_ALL.id,
+            tooltip: 'Collapse All',
+        });
     }
 
     registerKeybindings(keybindings: KeybindingRegistry): void {
@@ -189,6 +205,13 @@ export class ScmContribution extends AbstractViewContribution<ScmWidget> impleme
             keybinding: 'ctrlcmd+enter',
             when: 'scmFocus'
         });
+    }
+
+    protected withWidget<T>(widget: Widget | undefined = this.tryGetWidget(), fn: (widget: ScmWidget) => T): T | false {
+        if (widget instanceof ScmWidget && widget.id === ScmWidget.ID) {
+            return fn(widget);
+        }
+        return false;
     }
 
     protected async acceptInput(): Promise<void> {

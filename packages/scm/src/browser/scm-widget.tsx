@@ -90,6 +90,11 @@ export class ScmWidget extends BaseWidget implements StatefulWidget {
         return this.panel.layout as PanelLayout;
     }
 
+    collapseAll(): void {
+        this.resourceWidget.collapseAll();
+        this.update();
+    }
+
     /**
      * Updates the view mode based on the preference value.
      * @param preference the view mode preference.

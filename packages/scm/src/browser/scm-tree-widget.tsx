@@ -86,6 +86,10 @@ export class ScmTreeWidget extends TreeWidget {
         return this.model.viewMode;
     }
 
+    collapseAll(): void {
+        this.model.collapseAll();
+    }
+
     protected refreshOnRepositoryChange(): void {
         const repository = this.scmService.selectedRepository;
         this.model.repository = repository;
