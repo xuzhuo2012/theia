@@ -164,7 +164,7 @@ export function createAPIFactory(
     clipboard: ClipboardExt,
     webviewExt: WebviewsExtImpl
 ): PluginAPIFactory {
-
+    console.error('=== PLUGIN CONTEXT === createAPIFactory ');
     const commandRegistry = rpc.set(MAIN_RPC_CONTEXT.COMMAND_REGISTRY_EXT, new CommandRegistryImpl(rpc));
     const quickOpenExt = rpc.set(MAIN_RPC_CONTEXT.QUICK_OPEN_EXT, new QuickOpenExtImpl(rpc));
     const dialogsExt = new DialogsExtImpl(rpc);
@@ -181,7 +181,9 @@ export function createAPIFactory(
     const connectionExt = rpc.set(MAIN_RPC_CONTEXT.CONNECTION_EXT, new ConnectionExtImpl(rpc));
     const languagesContributionExt = rpc.set(MAIN_RPC_CONTEXT.LANGUAGES_CONTRIBUTION_EXT, new LanguagesContributionExtImpl(rpc, connectionExt));
     const fileSystemExt = rpc.set(MAIN_RPC_CONTEXT.FILE_SYSTEM_EXT, new FileSystemExtImpl(rpc, languagesExt));
+    console.error('=== PLUGIN CONTEXT === createAPIFactory === create new ExtHostFileSystemEventService ');
     const extHostFileSystemEvent = rpc.set(MAIN_RPC_CONTEXT.ExtHostFileSystemEventService, new ExtHostFileSystemEventService(rpc, editorsAndDocumentsExt));
+    console.error('=== PLUGIN CONTEXT === createAPIFactory === after create new ExtHostFileSystemEventService ');
     const scmExt = rpc.set(MAIN_RPC_CONTEXT.SCM_EXT, new ScmExtImpl(rpc, commandRegistry));
     const decorationsExt = rpc.set(MAIN_RPC_CONTEXT.DECORATIONS_EXT, new DecorationsExtImpl(rpc));
     rpc.set(MAIN_RPC_CONTEXT.DEBUG_EXT, debugExt);
@@ -426,15 +428,48 @@ export function createAPIFactory(
             onDidSaveTextDocument(listener, thisArg?, disposables?) {
                 return documents.onDidSaveTextDocument(listener, thisArg, disposables);
             },
-            onDidCreateFiles: (listener, thisArg, disposables) => extHostFileSystemEvent.onDidCreateFile(listener, thisArg, disposables),
-            onDidDeleteFiles: (listener, thisArg, disposables) => extHostFileSystemEvent.onDidDeleteFile(listener, thisArg, disposables),
-            onDidRenameFiles: (listener, thisArg, disposables) => extHostFileSystemEvent.onDidRenameFile(listener, thisArg, disposables),
-            onWillCreateFiles: (listener: (e: theia.FileWillCreateEvent) => any, thisArg?: any, disposables?: theia.Disposable[]) =>
-                extHostFileSystemEvent.getOnWillCreateFileEvent(plugin)(listener, thisArg, disposables),
-            onWillDeleteFiles: (listener: (e: theia.FileWillDeleteEvent) => any, thisArg?: any, disposables?: theia.Disposable[]) =>
-                extHostFileSystemEvent.getOnWillDeleteFileEvent(plugin)(listener, thisArg, disposables),
-            onWillRenameFiles: (listener: (e: theia.FileWillRenameEvent) => any, thisArg?: any, disposables?: theia.Disposable[]) =>
-                extHostFileSystemEvent.getOnWillRenameFileEvent(plugin)(listener, thisArg, disposables),
+            onDidCreateFiles: (listener, thisArg, disposables) => {
+                console.error('!!! plugin context !!! onDidCreateFiles ');
+                if (!extHostFileSystemEvent) {
+                    console.error('!!! plugin context !!! onDidCreateFiles !!! NULL ');
+                }
+                return extHostFileSystemEvent.onDidCreateFile(listener, thisArg, disposables);
+            },
+            onDidDeleteFiles: (listener, thisArg, disposables) => {
+                console.error('!!! plugin context !!! onDidDeleteFiles ');
+                if (!extHostFileSystemEvent) {
+                    console.error('!!! plugin context !!! onDidDeleteFiles !!! NULL ');
+                }
+                return extHostFileSystemEvent.onDidDeleteFile(listener, thisArg, disposables);
+            },
+            onDidRenameFiles: (listener, thisArg, disposables) => {
+                console.error('!!! plugin context !!! onDidRenameFiles ');
+                if (!extHostFileSystemEvent) {
+                    console.error('!!! plugin context !!! onDidRenameFiles !!! NULL ');
+                }
+                return extHostFileSystemEvent.onDidRenameFile(listener, thisArg, disposables);
+            },
+            onWillCreateFiles: (listener: (e: theia.FileWillCreateEvent) => any, thisArg?: any, disposables?: theia.Disposable[]) => {
+                console.error('!!! plugin context !!! onWillCreateFiles ');
+                if (!extHostFileSystemEvent) {
+                    console.error('!!! plugin context !!! onWillCreateFiles !!! NULL ');
+                }
+                return extHostFileSystemEvent.getOnWillCreateFileEvent(plugin)(listener, thisArg, disposables);
+            },
+            onWillDeleteFiles: (listener: (e: theia.FileWillDeleteEvent) => any, thisArg?: any, disposables?: theia.Disposable[]) => {
+                console.error('!!! plugin context !!! onWillDeleteFiles ');
+                if (!extHostFileSystemEvent) {
+                    console.error('!!! plugin context !!! onWillDeleteFiles !!! NULL ');
+                }
+                return extHostFileSystemEvent.getOnWillDeleteFileEvent(plugin)(listener, thisArg, disposables);
+            },
+            onWillRenameFiles: (listener: (e: theia.FileWillRenameEvent) => any, thisArg?: any, disposables?: theia.Disposable[]) => {
+                console.error('!!! plugin context !!! onWillRenameFiles ');
+                if (!extHostFileSystemEvent) {
+                    console.error('!!! plugin context !!! onWillRenameFiles !!! NULL ');
+                }
+                return extHostFileSystemEvent.getOnWillRenameFileEvent(plugin)(listener, thisArg, disposables);
+            },
             getConfiguration(section?, resource?): theia.WorkspaceConfiguration {
                 return preferenceRegistryExt.getConfiguration(section, resource);
             },

@@ -34,7 +34,13 @@ export class MainFileSystemEventService {
         rpc: RPCProtocol,
         container: interfaces.Container
     ) {
+        console.error('+++ MainFileSystemEventService +++ ');
         const proxy = rpc.getProxy(MAIN_RPC_CONTEXT.ExtHostFileSystemEventService);
+        console.error('+++ MainFileSystemEventService +++ ', proxy);
+        if (!proxy) {
+            console.error('+++ MainFileSystemEventService +++ NO PROXY');
+        }
+
         const fileService = container.get(FileService);
 
         // file system events - (changes the editor and other make)

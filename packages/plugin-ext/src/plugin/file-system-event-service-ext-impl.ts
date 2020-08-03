@@ -155,7 +155,7 @@ export class ExtHostFileSystemEventService implements ExtHostFileSystemEventServ
         private readonly _extHostDocumentsAndEditors: ExtHostDocumentsAndEditors,
         private readonly _mainThreadTextEditors: MainThreadTextEditorsShape = rpc.getProxy(PLUGIN_RPC_CONTEXT.TEXT_EDITORS_MAIN)
     ) {
-        //
+        console.error('=== ExtHostFileSystemEventService === CONSTRUCTOR ');
     }
 
     // --- file events
