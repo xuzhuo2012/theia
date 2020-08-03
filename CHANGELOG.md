@@ -22,6 +22,10 @@
 <a name="1.5.0_root_user_storage_uri"></a>
 - [[user-storage]](#1.5.0_root_user_storage_uri) settings URI must start with `/user` root to satisfy expectations of `FileService` []()
   - If you implement a custom user storage make sure to check old relative locations, otherwise it can cause user data loss.
+<a name="1_5_0_drop_node_10_support"></a>
+- [[repo]](#1_5_0_drop_node_10_support) support for `Node 10` is dropped. [#8290](https://github.com/eclipse-theia/theia/pull/8290)
+  - From now on, Node.js `12.x` is required when building.\
+   The recommended minimum version is aligned with `electron` (Node.js `12.14.1`).
 
 ## v1.4.0
 
