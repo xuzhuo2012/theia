@@ -379,6 +379,7 @@ export class FileService {
         const resolveSingleChildDescendants = options?.resolveSingleChildDescendants;
         const resolveMetadata = options?.resolveMetadata;
 
+        console.error('==== file service === before stat ', resource);
         const stat = await provider.stat(resource);
 
         let trie: TernarySearchTree<URI, boolean> | undefined;
