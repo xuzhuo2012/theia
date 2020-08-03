@@ -68,7 +68,7 @@ import {
 } from './plugin-api-rpc-model';
 import { ExtPluginApi } from './plugin-ext-api-contribution';
 import { KeysToAnyValues, KeysToKeysToAnyValue } from './types';
-import { CancellationToken, Progress, ProgressOptions } from '@theia/plugin';
+import { AuthenticationSession, CancellationToken, Progress, ProgressOptions } from '@theia/plugin';
 import { DebuggerDescription } from '@theia/debug/lib/common/debug-service';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { SymbolInformation } from 'vscode-languageserver-types';
@@ -77,6 +77,7 @@ import { MaybePromise } from '@theia/core/lib/common/types';
 import { QuickTitleButton } from '@theia/core/lib/common/quick-open-model';
 import * as files from '@theia/filesystem/lib/common/files';
 import { BinaryBuffer } from '@theia/core/lib/common/buffer';
+import { AuthenticationSessionsChangeEvent } from '@theia/authentication/lib/browser/authentication-service';
 
 export interface PreferenceData {
     [scope: number]: any;
@@ -1417,6 +1418,7 @@ export interface ClipboardMain {
 }
 
 export const PLUGIN_RPC_CONTEXT = {
+    AUTHENTICATION_MAIN: <ProxyIdentifier<AuthenticationMain>>createProxyIdentifier<AuthenticationMain>('AuthenticationMain'),
     COMMAND_REGISTRY_MAIN: <ProxyIdentifier<CommandRegistryMain>>createProxyIdentifier<CommandRegistryMain>('CommandRegistryMain'),
     QUICK_OPEN_MAIN: createProxyIdentifier<QuickOpenMain>('QuickOpenMain'),
     DIALOGS_MAIN: createProxyIdentifier<DialogsMain>('DialogsMain'),
@@ -1445,6 +1447,7 @@ export const PLUGIN_RPC_CONTEXT = {
 };
 
 export const MAIN_RPC_CONTEXT = {
+    AUTHENTICATION_EXT: createProxyIdentifier<AuthenticationExt>('AuthenticationExt'),
     HOSTED_PLUGIN_MANAGER_EXT: createProxyIdentifier<PluginManagerExt>('PluginManagerExt'),
     COMMAND_REGISTRY_EXT: createProxyIdentifier<CommandRegistryExt>('CommandRegistryExt'),
     QUICK_OPEN_EXT: createProxyIdentifier<QuickOpenExt>('QuickOpenExt'),
@@ -1486,6 +1489,34 @@ export interface TasksMain {
     $taskExecutions(): Promise<TaskExecutionDto[]>;
     $unregister(handle: number): void;
     $terminateTask(id: number): void;
+}
+
+export interface AuthenticationExt {
+    $getSessions(id: string): Promise<ReadonlyArray<theia.AuthenticationSession>>;
+    $getSessionAccessToken(id: string, sessionId: string): Promise<string>;
+    $login(id: string, scopes: string[]): Promise<theia.AuthenticationSession>;
+    $logout(id: string, sessionId: string): Promise<void>;
+    $onDidChangeAuthenticationSessions(providerId: string, event: theia.AuthenticationSessionsChangeEvent): Promise<void>;
+    $onDidChangeAuthenticationProviders(added: string[], removed: string[]): Promise<void>;
+}
+
+export interface AuthenticationMain {
+    $registerAuthenticationProvider(id: string, displayName: string, supportsMultipleAccounts: boolean): void;
+    $unregisterAuthenticationProvider(id: string): void;
+    $getProviderIds(): Promise<string[]>;
+    $sendDidChangeSessions(providerId: string, event: AuthenticationSessionsChangeEvent): void;
+    $getSession(providerId: string, scopes: string[], extensionId: string, extensionName: string,
+                options: { createIfNone?: boolean, clearSessionPreference?: boolean }): Promise<AuthenticationSession | undefined>;
+    $selectSession(providerId: string, providerName: string, extensionId: string, extensionName: string,
+                   potentialSessions: AuthenticationSession[], scopes: string[], clearSessionPreference: boolean): Promise<AuthenticationSession>;
+    $getSessionsPrompt(providerId: string, accountName: string, providerName: string, extensionId: string, extensionName: string): Promise<boolean>;
+    $loginPrompt(providerName: string, extensionName: string): Promise<boolean>;
+    $setTrustedExtension(providerId: string, accountName: string, extensionId: string, extensionName: string): Promise<void>;
+    $requestNewSession(providerId: string, scopes: string[], extensionId: string, extensionName: string): Promise<void>;
+
+    $getSessions(providerId: string): Promise<ReadonlyArray<theia.AuthenticationSession>>;
+    $login(providerId: string, scopes: string[]): Promise<theia.AuthenticationSession>;
+    $logout(providerId: string, sessionId: string): Promise<void>;
 }
 
 export interface RawColorInfo {

@@ -49,8 +49,12 @@ import { MonacoEditorService } from '@theia/monaco/lib/browser/monaco-editor-ser
 import { UntitledResourceResolver } from './editor/untitled-resource';
 import { FileResourceResolver } from '@theia/filesystem/lib/browser';
 import { MainFileSystemEventService } from './main-file-system-event-service';
+import { AuthenticationMainImpl } from './authentication-main';
 
 export function setUpPluginApi(rpc: RPCProtocol, container: interfaces.Container): void {
+    const authenticationMain = new AuthenticationMainImpl(rpc, container);
+    rpc.set(PLUGIN_RPC_CONTEXT.AUTHENTICATION_MAIN, authenticationMain);
+
     const commandRegistryMain = new CommandRegistryMainImpl(rpc, container);
     rpc.set(PLUGIN_RPC_CONTEXT.COMMAND_REGISTRY_MAIN, commandRegistryMain);
 
