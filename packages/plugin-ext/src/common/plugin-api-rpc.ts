@@ -64,7 +64,8 @@ import {
     SelectionRange,
     CallHierarchyDefinition,
     CallHierarchyReference,
-    SearchInWorkspaceResult
+    SearchInWorkspaceResult,
+    TimelineChangeEvent
 } from './plugin-api-rpc-model';
 import { ExtPluginApi } from './plugin-ext-api-contribution';
 import { KeysToAnyValues, KeysToKeysToAnyValue } from './types';
@@ -78,6 +79,7 @@ import { QuickTitleButton } from '@theia/core/lib/common/quick-open-model';
 import * as files from '@theia/filesystem/lib/common/files';
 import { BinaryBuffer } from '@theia/core/lib/common/buffer';
 import { ResourceLabelFormatter } from '@theia/core/lib/common/label-protocol';
+import { Timeline } from '@theia/timeline/lib/common/timeline-model';
 
 export interface PreferenceData {
     [scope: number]: any;
@@ -539,6 +541,16 @@ export interface WorkspaceExt {
     $onTextSearchResult(searchRequestId: number, done: boolean, result?: SearchInWorkspaceResult): void;
 }
 
+export interface TimelineExt {
+    $getTimeline(id: string, uri: string, options: theia.TimelineOptions, internalOptions?: theia.TimelineOptions): Promise<Timeline | undefined>;
+}
+
+export interface TimelineMain {
+    $registerTimelineProvider(id: string, label: string, scheme: string | string[]): Promise<void>;
+    $fireTimelineChanged(e: TimelineChangeEvent | undefined): Promise<void>;
+    $unregisterTimelineProvider(source: string): Promise<void>;
+}
+
 export interface DialogsMain {
     $showOpenDialog(options: OpenDialogOptionsMain): Promise<string[] | undefined>;
     $showSaveDialog(options: SaveDialogOptionsMain): Promise<string | undefined>;
@@ -655,6 +667,18 @@ export interface ScmExt {
     $executeResourceCommand(sourceControlHandle: number, groupHandle: number, resourceHandle: number): Promise<void>;
     $provideOriginalResource(sourceControlHandle: number, uri: string, token: CancellationToken): Promise<UriComponents | undefined>;
     $setSourceControlSelection(sourceControlHandle: number, selected: boolean): Promise<void>;
+}
+
+export namespace TimelineCommandArg {
+    export function is(arg: Object | undefined): arg is TimelineCommandArg {
+        return !!arg && typeof arg === 'object' && 'timelineHandle' in arg;
+    }
+}
+export interface TimelineCommandArg {
+    timelineHandle: string;
+    source: string;
+    uri: string;
+    isSingleUri: boolean;
 }
 
 export interface DecorationsExt {
@@ -1443,7 +1467,8 @@ export const PLUGIN_RPC_CONTEXT = {
     DECORATIONS_MAIN: createProxyIdentifier<DecorationsMain>('DecorationsMain'),
     WINDOW_MAIN: createProxyIdentifier<WindowMain>('WindowMain'),
     CLIPBOARD_MAIN: <ProxyIdentifier<ClipboardMain>>createProxyIdentifier<ClipboardMain>('ClipboardMain'),
-    LABEL_SERVICE_MAIN: <ProxyIdentifier<LabelServiceMain>>createProxyIdentifier<LabelServiceMain>('LabelServiceMain')
+    LABEL_SERVICE_MAIN: <ProxyIdentifier<LabelServiceMain>>createProxyIdentifier<LabelServiceMain>('LabelServiceMain'),
+    TIMELINE_MAIN: <ProxyIdentifier<TimelineMain>>createProxyIdentifier<TimelineMain>('TimelineMain')
 };
 
 export const MAIN_RPC_CONTEXT = {
@@ -1470,7 +1495,8 @@ export const MAIN_RPC_CONTEXT = {
     ExtHostFileSystemEventService: createProxyIdentifier<ExtHostFileSystemEventServiceShape>('ExtHostFileSystemEventService'),
     SCM_EXT: createProxyIdentifier<ScmExt>('ScmExt'),
     DECORATIONS_EXT: createProxyIdentifier<DecorationsExt>('DecorationsExt'),
-    LABEL_SERVICE_EXT: createProxyIdentifier<LabelServiceExt>('LabelServiceExt')
+    LABEL_SERVICE_EXT: createProxyIdentifier<LabelServiceExt>('LabelServiceExt'),
+    TIMELINE_EXT: createProxyIdentifier<TimelineExt>('TimeLineExt')
 };
 
 export interface TasksExt {
