@@ -18,8 +18,7 @@ import { interfaces } from 'inversify';
 import { AuthenticationExt, AuthenticationMain, MAIN_RPC_CONTEXT } from '../../common/plugin-api-rpc';
 import { RPCProtocol } from '../../common/rpc-protocol';
 import { Disposable } from '@theia/core/lib/common/disposable';
-import { MessageService } from '@theia/core/lib/common';
-import { AuthenticationSession } from '@theia/plugin';
+import { MessageService } from '@theia/core/lib/common/message-service';
 import { QuickOpenService, StorageService } from '@theia/core/lib/browser';
 import {
     AuthenticationProvider,
@@ -27,6 +26,7 @@ import {
     AuthenticationSessionsChangeEvent, readAllowedExtensions
 } from '@theia/authentication/lib/browser/authentication-service';
 import { QuickOpenActionProvider, QuickOpenItem } from '@theia/core/lib/common/quick-open-model';
+import { AuthenticationSession } from '../../plugin/types-impl';
 
 export class AuthenticationMainImpl implements AuthenticationMain {
     private readonly proxy: AuthenticationExt;

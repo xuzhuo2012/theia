@@ -1,9 +1,9 @@
 {
   "name": "@theia/authentication",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Theia - Type Authentication Extension",
   "dependencies": {
-    "@theia/core": "^1.3.0"
+    "@theia/core": "^1.4.0"
   },
   "publishConfig": {
     "access": "public"

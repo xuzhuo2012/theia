@@ -122,6 +122,7 @@ import {
     CallHierarchyOutgoingCall,
     AuthenticationSession
 } from './types-impl';
+import { AuthenticationExtImpl } from './authentication-ext';
 import { SymbolKind } from '../common/plugin-api-rpc-model';
 import { EditorsAndDocumentsExtImpl } from './editors-and-documents';
 import { TextEditorsExtImpl } from './text-editors';
@@ -144,7 +145,6 @@ import { TasksExtImpl } from './tasks/tasks';
 import { DebugExtImpl } from './node/debug/debug';
 import { FileSystemExtImpl } from './file-system-ext-impl';
 import { QuickPick, QuickPickItem } from '@theia/plugin';
-import { AuthenticationExtImpl } from './authentication-ext';
 import { ScmExtImpl } from './scm';
 import { DecorationProvider, LineChange } from '@theia/plugin';
 import { DecorationsExtImpl } from './decorations';
@@ -339,7 +339,7 @@ export function createAPIFactory(
             showQuickPick(items: any, options: theia.QuickPickOptions, token?: theia.CancellationToken): any {
                 return quickOpenExt.showQuickPick(items, options, token);
             },
-            createQuickPick<T extends theia.QuickPickItem>(): theia.QuickPick<T> {
+            createQuickPick<T extends QuickPickItem>(): QuickPick<T> {
                 return quickOpenExt.createQuickPick(plugin);
             },
             showWorkspaceFolderPick(options?: theia.WorkspaceFolderPickOptions): PromiseLike<theia.WorkspaceFolder | undefined> {

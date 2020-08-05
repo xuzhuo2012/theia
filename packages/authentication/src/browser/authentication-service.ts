@@ -14,9 +14,10 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-// import { inject } from 'inversify';
-import { Disposable, Emitter, Event } from '@theia/core/lib/common';
-import { StorageService } from '@theia/core/lib/browser';
+import { injectable } from 'inversify';
+import { Emitter, Event } from '@theia/core/lib/common/event';
+import { Disposable } from '@theia/core/lib/common/disposable';
+import { StorageService } from '@theia/core/lib/browser/storage-service';
 
 export interface AuthenticationSession {
     id: string;
@@ -92,6 +93,7 @@ export interface SessionRequestInfo {
     [scopes: string]: SessionRequest;
 }
 
+@injectable()
 export class AuthenticationServiceImpl implements Disposable, AuthenticationService {
     declare readonly _serviceBrand: undefined;
     private _placeholderMenuItem: Disposable | undefined;
