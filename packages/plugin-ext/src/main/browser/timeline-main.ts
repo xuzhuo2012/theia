@@ -18,11 +18,15 @@ import { TimelineMain } from '../../common/plugin-api-rpc';
 import { RPCProtocol } from '../../common/rpc-protocol';
 import { TimelineService } from '@theia/timeline/lib/browser/timeline-service';
 import { Emitter } from '@theia/core/lib/common';
-import URI from '@theia/core/lib/common/uri';
+import { URI } from 'vscode-uri';
 import { MAIN_RPC_CONTEXT, TimelineExt } from '../../common/plugin-api-rpc';
-import { Timeline, TimelineOptions } from '@theia/timeline/lib/common/timeline-model';
-import { TimelineChangeEvent } from '@theia/timeline/lib/common/timeline-model';
-import { TimelineChangeEvent as PluginTimelineChangeEvent } from '../../common/plugin-api-rpc-model';
+import {
+    InternalTimelineOptions,
+    Timeline,
+    TimelineOptions,
+    TimelineProviderDescriptor,
+    TimelineChangeEvent
+} from '@theia/timeline/lib/common/timeline-model';
 
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
@@ -32,33 +36,31 @@ import { TimelineChangeEvent as PluginTimelineChangeEvent } from '../../common/p
 
 export class TimelineMainImpl implements TimelineMain {
     private readonly proxy: TimelineExt;
-    private readonly service: TimelineService;
+    private readonly timelineService: TimelineService;
     private readonly providerEmitters = new Map<string, Emitter<TimelineChangeEvent>>();
     constructor(rpc: RPCProtocol, container: interfaces.Container) {
         this.proxy = rpc.getProxy(MAIN_RPC_CONTEXT.TIMELINE_EXT);
-        this.service = container.get<TimelineService>(TimelineService);
+        this.timelineService = container.get<TimelineService>(TimelineService);
     }
 
-    async $registerTimelineProvider(id: string, label: string, scheme: string | string[]): Promise<void> {
-        const emitters = this.providerEmitters;
-        let onDidChange = emitters.get(id);
-        if (onDidChange === undefined) {
-            onDidChange = new Emitter<TimelineChangeEvent>();
-            emitters.set(id, onDidChange);
-        }
-
+    async $registerTimelineProvider(provider: TimelineProviderDescriptor): Promise<void> {
         const proxy = this.proxy;
 
-        this.service.registerTimelineProvider({
-            id,
-            label,
-            scheme,
+        const emitters = this.providerEmitters;
+        let onDidChange = emitters.get(provider.id);
+        if (onDidChange === undefined) {
+            onDidChange = new Emitter<TimelineChangeEvent>();
+            emitters.set(provider.id, onDidChange);
+        }
+
+        this.timelineService.registerTimelineProvider({
+            ...provider,
             onDidChange: onDidChange.event,
-            async provideTimeline(uri: URI, options: TimelineOptions): Promise<Timeline | undefined> {
-                return proxy.$getTimeline(id, uri.toString(), options);
+            provideTimeline(uri: URI, options: TimelineOptions, internalOptions?: InternalTimelineOptions): Promise<Timeline | undefined> {
+                return proxy.$getTimeline(provider.id, uri, options, internalOptions);
             },
             dispose(): void {
-                emitters.delete(id);
+                emitters.delete(provider.id);
                 if (onDidChange) {
                     onDidChange.dispose();
                 }
@@ -66,16 +68,14 @@ export class TimelineMainImpl implements TimelineMain {
         });
     }
 
-    async $fireTimelineChanged(e: PluginTimelineChangeEvent | undefined): Promise<void> {
-        if (e) {
-            const emitter = this.providerEmitters.get(e.id);
-            if (emitter) {
-                emitter.fire({ uri: new URI(e.uri), reset: e.reset, id: e.id });
-            }
-        }
+    async $unregisterTimelineProvider(id: string): Promise<void> {
+        this.timelineService.unregisterTimelineProvider(id);
     }
 
-    async $unregisterTimelineProvider(source: string): Promise<void> {
-        this.service.unregisterTimelineProvider(source);
+    async $fireTimelineChanged(e: TimelineChangeEvent): Promise<void> {
+        const emitter = this.providerEmitters.get(e.id);
+        if (emitter) {
+            emitter.fire(e);
+        }
     }
 }

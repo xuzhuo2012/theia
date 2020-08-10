@@ -52,16 +52,24 @@ export class TimelineContribution implements FrontendApplicationContribution {
     };
 
     async onDidInitializeLayout?(app: FrontendApplication): Promise<void> {
-        const explorer = await this.widgetManager.getWidget(EXPLORER_VIEW_CONTAINER_ID);
         let timeline: TimelineWidget;
+        const attachTimeline = async (explorer: Widget) => {
+            if (explorer instanceof ViewContainer && explorer.getTrackableWidgets().indexOf(timeline) === -1) {
+                timeline = await this.widgetManager.getOrCreateWidget(TimelineWidget.ID);
+                explorer.addWidget(timeline, { initiallyCollapsed: true });
+            }
+        };
+        this.widgetManager.onDidCreateWidget(async event => {
+           if (event.widget.id === EXPLORER_VIEW_CONTAINER_ID) {
+               attachTimeline(event.widget);
+           }
+        });
         this.timelineService.onDidChangeProviders( async event => {
-            if (explorer instanceof ViewContainer) {
-                if (event.added && event.added.length > 0 && explorer.getTrackableWidgets().indexOf(timeline) === -1) {
-                    timeline = await this.widgetManager.getOrCreateWidget(TimelineWidget.ID);
-                    explorer.addWidget(timeline, { initiallyCollapsed: true });
-                } else if (event.removed && this.timelineService.getSources().length === 0) {
-                    timeline.close();
-                }
+            const explorer = await this.widgetManager.getWidget(EXPLORER_VIEW_CONTAINER_ID);
+            if (explorer && event.added && event.added.length > 0) {
+                attachTimeline(explorer);
+            } else if (event.removed && this.timelineService.getSources().length === 0) {
+                timeline.close();
             }
         });
         const toolbarItem = {
@@ -73,7 +81,7 @@ export class TimelineContribution implements FrontendApplicationContribution {
         this.commandRegistry.registerCommand({ id: toolbarItem.command }, {
             execute: widget => this.checkWidget(widget, () => {
                 if (timeline) {
-                    timeline.refreshList();
+                    timeline.update();
                 }
             }),
             isEnabled: widget => this.checkWidget(widget, () => true),

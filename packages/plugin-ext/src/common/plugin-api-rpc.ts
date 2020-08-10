@@ -64,8 +64,7 @@ import {
     SelectionRange,
     CallHierarchyDefinition,
     CallHierarchyReference,
-    SearchInWorkspaceResult,
-    TimelineChangeEvent
+    SearchInWorkspaceResult
 } from './plugin-api-rpc-model';
 import { ExtPluginApi } from './plugin-ext-api-contribution';
 import { KeysToAnyValues, KeysToKeysToAnyValue } from './types';
@@ -79,7 +78,12 @@ import { QuickTitleButton } from '@theia/core/lib/common/quick-open-model';
 import * as files from '@theia/filesystem/lib/common/files';
 import { BinaryBuffer } from '@theia/core/lib/common/buffer';
 import { ResourceLabelFormatter } from '@theia/core/lib/common/label-protocol';
-import { Timeline } from '@theia/timeline/lib/common/timeline-model';
+import {
+    InternalTimelineOptions,
+    Timeline,
+    TimelineChangeEvent,
+    TimelineProviderDescriptor
+} from '@theia/timeline/lib/common/timeline-model';
 
 export interface PreferenceData {
     [scope: number]: any;
@@ -542,12 +546,12 @@ export interface WorkspaceExt {
 }
 
 export interface TimelineExt {
-    $getTimeline(id: string, uri: string, options: theia.TimelineOptions, internalOptions?: theia.TimelineOptions): Promise<Timeline | undefined>;
+    $getTimeline(source: string, uri: UriComponents, options: theia.TimelineOptions, internalOptions?: InternalTimelineOptions): Promise<Timeline | undefined>;
 }
 
 export interface TimelineMain {
-    $registerTimelineProvider(id: string, label: string, scheme: string | string[]): Promise<void>;
-    $fireTimelineChanged(e: TimelineChangeEvent | undefined): Promise<void>;
+    $registerTimelineProvider(provider: TimelineProviderDescriptor): Promise<void>;
+    $fireTimelineChanged(e: TimelineChangeEvent): Promise<void>;
     $unregisterTimelineProvider(source: string): Promise<void>;
 }
 
@@ -678,7 +682,6 @@ export interface TimelineCommandArg {
     timelineHandle: string;
     source: string;
     uri: string;
-    isSingleUri: boolean;
 }
 
 export interface DecorationsExt {

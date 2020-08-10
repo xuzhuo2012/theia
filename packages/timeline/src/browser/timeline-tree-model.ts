@@ -48,7 +48,7 @@ export class TimelineTreeModel extends TreeModelImpl {
             } as TimelineNode)
         );
         if (loadMore) {
-            const loadMoreNode = new TimelineItem('Load-more', 0);
+            const loadMoreNode: TimelineItem = { label: 'Load-more', timestamp: 0, handle: '', uri: '', source: '' };
             loadMoreNode.command = TimelineContribution.LOAD_MORE_COMMAND;
             children.push({
                 timelineItem: loadMoreNode,

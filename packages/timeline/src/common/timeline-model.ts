@@ -21,9 +21,9 @@
 // some code copied and modified from https://github.com/microsoft/vscode/blob/3aab025eaebde6c9544293b6c7554f3f583e15d0/src/vs/workbench/contrib/timeline/common/timeline.ts
 
 import { Command, Disposable, Event } from '@theia/core/lib/common';
-import URI from '@theia/core/lib/common/uri';
+import { URI } from 'vscode-uri';
 
-export class TimelineItem {
+export interface TimelineItem {
     source: string;
     uri: string;
     handle: string;
@@ -34,10 +34,6 @@ export class TimelineItem {
     detail?: string;
     command?: Command;
     contextValue?: string;
-    constructor(label: string, timestamp: number) {
-        this.label = label;
-        this.timestamp = timestamp;
-    }
 }
 
 export interface TimelineChangeEvent {
@@ -56,6 +52,11 @@ export interface TimelineOptions {
     limit?: number | { timestamp: number; id?: string };
 }
 
+export interface InternalTimelineOptions {
+    cacheResults: boolean;
+    resetCache: boolean;
+}
+
 export interface Timeline {
     source: string;
 
@@ -66,12 +67,15 @@ export interface Timeline {
     items: TimelineItem[];
 }
 
-export interface TimelineProvider extends Disposable {
+export interface TimelineProviderDescriptor {
     id: string;
     label: string;
     scheme: string | string[];
+}
+
+export interface TimelineProvider extends TimelineProviderDescriptor, Disposable {
     onDidChange?: Event<TimelineChangeEvent>;
-    provideTimeline(uri: URI, options: TimelineOptions ): Promise<Timeline | undefined>;
+    provideTimeline(uri: URI, options: TimelineOptions, internalOptions?: InternalTimelineOptions): Promise<Timeline | undefined>;
 }
 
 export interface TimelineSource {

@@ -16,8 +16,9 @@
 
 import { injectable } from 'inversify';
 import { Disposable, Emitter, Event } from '@theia/core/lib/common';
-import URI from '@theia/core/lib/common/uri';
+import { URI } from 'vscode-uri';
 import {
+    InternalTimelineOptions,
     Timeline,
     TimelineChangeEvent, TimelineItem, TimelineOptions,
     TimelineProvider,
@@ -75,7 +76,7 @@ export class TimelineService {
         return result;
     }
 
-    getTimeline(id: string, uri: URI, options: TimelineOptions): Promise<Timeline | undefined> {
+    getTimeline(id: string, uri: URI, options: TimelineOptions, internalOptions?: InternalTimelineOptions): Promise<Timeline | undefined> {
         const provider = this.providers.get(id);
         if (!provider) {
             return Promise.resolve(undefined);
@@ -87,7 +88,7 @@ export class TimelineService {
             }
         }
 
-        return provider.provideTimeline(uri, options)
+        return provider.provideTimeline(uri, options, internalOptions)
             .then(result => {
                 if (!result) {
                     return undefined;

@@ -305,17 +305,16 @@ export class MenusContributionPointHandler {
     protected toTimelineArgs(...args: any[]): any[] {
         const timelineArgs: any[] = [];
         const arg = args[0];
-        timelineArgs.push(this.toTimelineArg(arg, false));
-        timelineArgs.push(this.toTimelineArg(arg, true));
-        timelineArgs.push(arg instanceof TimelineItem ? arg.source : '');
+        timelineArgs.push(this.toTimelineArg(arg));
+        timelineArgs.push(CodeUri.parse(arg.uri));
+        timelineArgs.push('source' in arg ? arg.source : '');
         return timelineArgs;
     }
-    protected toTimelineArg(arg: TimelineItem, isSingleUri: boolean): TimelineCommandArg | undefined {
+    protected toTimelineArg(arg: TimelineItem): TimelineCommandArg {
         return {
             timelineHandle: arg.handle,
             source: arg.source,
-            uri: arg.uri,
-            isSingleUri
+            uri: arg.uri
         };
     }
 

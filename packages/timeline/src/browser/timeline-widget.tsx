@@ -18,15 +18,13 @@
 
 import { Message } from '@phosphor/messaging';
 import { inject, injectable, postConstruct } from 'inversify';
-import { DisposableCollection } from '@theia/core/lib/common/disposable';
 import {
     ApplicationShell,
     BaseWidget,
     MessageLoop,
     NavigatableWidget,
     Panel,
-    PanelLayout,
-    Widget
+    PanelLayout
 } from '@theia/core/lib/browser';
 import { TimelineTreeWidget } from './timeline-tree-widget';
 import { TimelineService } from './timeline-service';
@@ -34,6 +32,7 @@ import { CommandRegistry } from '@theia/core/lib/common';
 import { TimelineEmptyWidget } from './timeline-empty-widget';
 import { toArray } from '@phosphor/algorithm';
 import URI from '@theia/core/lib/common/uri';
+import { URI as CodeURI } from 'vscode-uri';
 import { TimelineProvidersChangeEvent } from '../common/timeline-model';
 import { TimelineAggregate } from './timeline-service';
 
@@ -54,6 +53,8 @@ export class TimelineWidget extends BaseWidget {
     constructor() {
         super();
         this.id = TimelineWidget.ID;
+        this.title.label = 'Timeline';
+        this.title.caption = this.title.label;
         this.addClass('theia-timeline');
     }
 
@@ -61,17 +62,13 @@ export class TimelineWidget extends BaseWidget {
     protected init(): void {
         const layout = new PanelLayout();
         this.layout = layout;
-        this.panel = new Panel({
-            layout: new PanelLayout({
-            })
-        });
+        this.panel = new Panel({ layout: new PanelLayout({}) });
         this.panel.node.tabIndex = -1;
         layout.addWidget(this.panel);
-        this.containerLayout.addWidget(this.resourceWidget);
-        this.containerLayout.addWidget(this.timelineEmptyWidget);
+        this.containerLayout!.addWidget(this.resourceWidget);
+        this.containerLayout!.addWidget(this.timelineEmptyWidget);
 
         this.refresh();
-        this.refreshList();
         this.toDispose.push(this.timelineService.onDidChangeTimeline(event => {
                 const currentWidgetUri = this.getCurrentWidgetUri();
                 if (currentWidgetUri ) {
@@ -79,28 +76,12 @@ export class TimelineWidget extends BaseWidget {
                 }
             })
         );
-        this.toDispose.push(this.applicationShell.onDidChangeCurrentWidget(async event => {
-            const current = event.newValue;
-            if (current && NavigatableWidget.is(current)) {
-                const uri = current.getResourceUri();
-                if (uri) {
-                    this.timelineEmptyWidget.hide();
-                    this.resourceWidget.show();
-                    this.loadTimeline(uri, true);
-                }
-                return;
-            }
-            if (!this.suitableWidgetsOpened()) {
-                this.resourceWidget.hide();
-                this.timelineEmptyWidget.show();
-            }
-        }));
+        this.toDispose.push(this.applicationShell.onDidChangeCurrentWidget(async event => this.refresh()));
         this.toDispose.push(this.timelineService.onDidChangeProviders(e => this.onProvidersChanged(e)));
     }
 
     private onProvidersChanged(event: TimelineProvidersChangeEvent): void {
-        const current = this.applicationShell.currentWidget;
-        const currentUri = NavigatableWidget.is(current) ? current.getResourceUri() : undefined;
+        const currentUri = this.getCurrentWidgetUri();
         if (event.removed) {
             for (const source of event.removed) {
                 this.timelinesBySource.delete(source);
@@ -111,19 +92,19 @@ export class TimelineWidget extends BaseWidget {
             }
         } else if (event.added) {
             if (currentUri) {
-                event.added.forEach( source => this.loadTimelineForSource(source, currentUri, true));
+                event.added.forEach(source => this.loadTimelineForSource(source, CodeURI.parse(currentUri.toString()), true));
             }
         }
     }
 
-    async loadTimelineForSource(source: string, uri: URI, reset: boolean): Promise<void> {
+    protected async loadTimelineForSource(source: string, uri: CodeURI, reset: boolean): Promise<void> {
         if (reset) {
             this.timelinesBySource.delete(source);
         }
         let timeline = this.timelinesBySource.get(source);
         const cursor = timeline?.cursor;
         const options = { cursor: reset ? undefined : cursor, limit: TimelineTreeWidget.PAGE_SIZE };
-        const timelineResult = await this.timelineService.getTimeline(source, uri, options);
+        const timelineResult = await this.timelineService.getTimeline(source, uri, options, { cacheResults: true, resetCache: reset });
         if (timelineResult) {
             const items = timelineResult.items;
             if (items) {
@@ -141,11 +122,11 @@ export class TimelineWidget extends BaseWidget {
 
     async loadTimeline(uri: URI, reset: boolean): Promise<void> {
         for (const source of this.timelineService.getSources().map(s => s.id)) {
-            this.loadTimelineForSource(source, uri, reset);
+            this.loadTimelineForSource(source, CodeURI.parse(uri.toString()), reset);
         }
     }
 
-    refreshList(): void {
+    refresh(): void {
         const uri = this.getCurrentWidgetUri();
         if (uri) {
             this.timelineEmptyWidget.hide();
@@ -169,32 +150,25 @@ export class TimelineWidget extends BaseWidget {
     }
 
     private getCurrentWidgetUri(): URI | undefined {
-        const current = this.applicationShell.currentWidget;
+        let current = this.applicationShell.currentWidget;
+        if (!NavigatableWidget.is(current)) {
+            current = toArray(this.applicationShell.mainPanel.widgets()).find(widget => {
+                if (widget.isVisible && !widget.isHidden) {
+                    return widget;
+                }
+            });
+        }
         return  NavigatableWidget.is(current) ? current.getResourceUri() : undefined;
     }
 
-    protected get containerLayout(): PanelLayout {
+    protected get containerLayout(): PanelLayout | undefined {
         return this.panel.layout as PanelLayout;
-    }
-
-    protected readonly toDisposeOnRefresh = new DisposableCollection();
-
-    protected refresh(): void {
-        this.toDisposeOnRefresh.dispose();
-        this.toDispose.push(this.toDisposeOnRefresh);
-        this.title.label = 'Timeline';
-        this.title.caption = this.title.label;
-        this.update();
-    }
-
-    protected updateImmediately(): void {
-        this.onUpdateRequest(Widget.Msg.UpdateRequest);
     }
 
     protected onUpdateRequest(msg: Message): void {
         MessageLoop.sendMessage(this.resourceWidget, msg);
         MessageLoop.sendMessage(this.timelineEmptyWidget, msg);
-        this.refreshList();
+        this.refresh();
         super.onUpdateRequest(msg);
     }
 
